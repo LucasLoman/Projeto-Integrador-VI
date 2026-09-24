@@ -7,3 +7,6 @@
 
 /* Cadastro de fornecedores */
 .field-stack{display:grid;gap:6px;color:#475569;font-size:13px}.field-stack input{font-size:14px}
+
+/* Cadastro de categorias */
+.category-form{display:flex;gap:10px;align-items:center;background:white;padding:16px;border-radius:12px;margin-top:18px}.category-form input{flex:1;min-width:220px;padding:11px;border:1px solid #cbd5e1;border-radius:8px}@media(max-width:650px){.category-form{align-items:stretch;flex-direction:column}.category-form .form-actions{flex-wrap:wrap}}
