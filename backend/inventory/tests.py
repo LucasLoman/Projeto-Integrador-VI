@@ -126,3 +126,48 @@ class SupplierCrudTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
         self.assertEqual(response.data[0]['name'], 'Auto Distribuidora Sul')
+
+
+class CategoryCrudTests(APITestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='categoria_teste', password='teste123')
+        self.client.force_authenticate(self.user)
+
+    def test_create_category(self):
+        response = self.client.post('/api/categories/', {'name': 'Freios'}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data['name'], 'Freios')
+
+    def test_reject_duplicate_category_ignoring_case(self):
+        from .models import Category
+        Category.objects.create(name='Filtros')
+        response = self.client.post('/api/categories/', {'name': 'filtros'}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_update_category(self):
+        from .models import Category
+        category = Category.objects.create(name='Suspensão')
+        response = self.client.patch(
+            f'/api/categories/{category.id}/',
+            {'name': 'Suspensão e Direção'},
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        category.refresh_from_db()
+        self.assertEqual(category.name, 'Suspensão e Direção')
+
+    def test_delete_category(self):
+        from .models import Category
+        category = Category.objects.create(name='Elétrica')
+        response = self.client.delete(f'/api/categories/{category.id}/')
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(Category.objects.filter(id=category.id).exists())
+
+    def test_search_category(self):
+        from .models import Category
+        Category.objects.create(name='Freios')
+        Category.objects.create(name='Filtros')
+        response = self.client.get('/api/categories/?search=Freio')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]['name'], 'Freios')

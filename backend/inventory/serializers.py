@@ -9,6 +9,18 @@ class CategorySerializer(serializers.ModelSerializer):
         model = Category
         fields = '__all__'
 
+    def validate_name(self, value):
+        value = value.strip()
+        if len(value) < 2:
+            raise serializers.ValidationError('Informe um nome válido para a categoria.')
+
+        queryset = Category.objects.filter(name__iexact=value)
+        if self.instance:
+            queryset = queryset.exclude(pk=self.instance.pk)
+        if queryset.exists():
+            raise serializers.ValidationError('Já existe uma categoria com esse nome.')
+        return value
+
 
 class BrandSerializer(serializers.ModelSerializer):
     class Meta:
