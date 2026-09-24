@@ -74,3 +74,55 @@ class StockMovementTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.product.refresh_from_db()
         self.assertEqual(self.product.quantity, 15)
+
+
+class SupplierCrudTests(APITestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='fornecedor_teste', password='teste123')
+        self.client.force_authenticate(self.user)
+
+    def test_create_supplier(self):
+        response = self.client.post(
+            '/api/suppliers/',
+            {
+                'name': 'Distribuidora Teste',
+                'cnpj': '12345678000199',
+                'phone': '(15) 99999-9999',
+                'email': 'contato@teste.com.br',
+                'lead_time_days': 5,
+            },
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data['name'], 'Distribuidora Teste')
+        self.assertEqual(response.data['lead_time_days'], 5)
+
+    def test_reject_invalid_cnpj(self):
+        response = self.client.post(
+            '/api/suppliers/',
+            {'name': 'Fornecedor Inválido', 'cnpj': '123', 'lead_time_days': 7},
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('cnpj', response.data)
+
+    def test_update_supplier(self):
+        from .models import Supplier
+        supplier = Supplier.objects.create(name='Fornecedor A', lead_time_days=7)
+        response = self.client.patch(
+            f'/api/suppliers/{supplier.id}/',
+            {'lead_time_days': 3, 'phone': '15999999999'},
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        supplier.refresh_from_db()
+        self.assertEqual(supplier.lead_time_days, 3)
+
+    def test_search_supplier(self):
+        from .models import Supplier
+        Supplier.objects.create(name='Auto Distribuidora Sul', cnpj='12345678000199')
+        Supplier.objects.create(name='Peças Norte', cnpj='98765432000188')
+        response = self.client.get('/api/suppliers/?search=Sul')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]['name'], 'Auto Distribuidora Sul')

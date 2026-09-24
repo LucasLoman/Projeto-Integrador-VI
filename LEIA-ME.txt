@@ -1,34 +1,40 @@
-AUTOSTOCK - FEATURE/CADASTRO-PRODUTOS
+BRANCH: feature/cadastro-fornecedores
+SOURCE: develop
 
-1) No GitHub Desktop, fique na branch develop e faça Fetch/Pull.
-2) Crie a branch feature/cadastro-produtos a partir da develop.
-3) Extraia este ZIP.
-4) Copie as pastas backend e frontend para a raiz do projeto AutoStock.
-5) Quando o Windows perguntar, confirme a mesclagem/substituição dos arquivos.
+Esta etapa implementa/melhora o cadastro de fornecedores do AutoStock.
 
-Arquivos alterados nesta etapa:
+Arquivos alterados:
 - backend/inventory/serializers.py
 - backend/inventory/views.py
 - backend/inventory/tests.py
-- frontend/src/pages/Products.tsx
+- frontend/src/pages/Suppliers.tsx
 - frontend/src/styles.css
 
-Funcionalidades desta branch:
-- Cadastro de produtos
-- Listagem de produtos
-- Edição de produtos
-- Exclusão de produtos
-- Pesquisa no front-end
-- Pesquisa via API usando ?search=
-- Validação de SKU e valores
-- Destaque de estoque abaixo do mínimo
-- Testes básicos de CRUD da API
+Funcionalidades:
+- Cadastro de fornecedor
+- Nome / razão social
+- CNPJ
+- Telefone
+- E-mail
+- Prazo médio de entrega (lead time)
+- Listagem e pesquisa
+- Edição
+- Exclusão
+- Validação básica de CNPJ
+- Testes da API
+
+COMO USAR:
+1. No GitHub Desktop, atualize a develop (Fetch/Pull).
+2. Crie a branch feature/cadastro-fornecedores com Source = develop.
+3. Extraia este ZIP.
+4. Copie as pastas backend e frontend para a raiz do AutoStock.
+5. Quando o Windows perguntar, escolha mesclar/substituir os arquivos.
+6. Confira os arquivos em Changes no GitHub Desktop.
+7. Commit sugerido:
+   feat: implementa cadastro de fornecedores
+8. Push origin.
+9. Abra Pull Request para develop.
+10. Faça o merge e apague a branch após confirmar que tudo ficou correto.
 
 Observação:
-O campo quantidade permanece somente leitura no cadastro. A quantidade deve ser alterada pelo módulo de movimentação de estoque, que será implementado em outra branch.
-
-Commit sugerido:
-feat: implementa cadastro de produtos
-
-Depois:
-Push origin -> Pull Request para develop -> Merge -> excluir feature/cadastro-produtos.
+O modelo Supplier já existe na estrutura inicial do projeto. Por isso não há nova migration nesta etapa.

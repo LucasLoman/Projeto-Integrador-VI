@@ -1,3 +1,4 @@
+import re
 from rest_framework import serializers
 from django.db import transaction
 from .models import Category, Brand, Supplier, Product, StockMovement, Sale, SaleItem
@@ -19,6 +20,28 @@ class SupplierSerializer(serializers.ModelSerializer):
     class Meta:
         model = Supplier
         fields = '__all__'
+
+    def validate_name(self, value):
+        value = value.strip()
+        if len(value) < 2:
+            raise serializers.ValidationError('Informe um nome válido para o fornecedor.')
+        return value
+
+    def validate_cnpj(self, value):
+        if not value:
+            return ''
+        digits = re.sub(r'\D', '', value)
+        if len(digits) != 14:
+            raise serializers.ValidationError('O CNPJ deve possuir 14 dígitos.')
+        return digits
+
+    def validate_phone(self, value):
+        return value.strip() if value else ''
+
+    def validate_lead_time_days(self, value):
+        if value < 0:
+            raise serializers.ValidationError('O prazo de entrega não pode ser negativo.')
+        return value
 
 
 class ProductSerializer(serializers.ModelSerializer):
