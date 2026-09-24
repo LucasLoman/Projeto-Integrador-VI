@@ -29,6 +29,8 @@ class BrandViewSet(viewsets.ModelViewSet):
 class SupplierViewSet(viewsets.ModelViewSet):
     queryset = Supplier.objects.all().order_by('name')
     serializer_class = SupplierSerializer
+    filter_backends = [filters.SearchFilter]
+    search_fields = ['name', 'cnpj', 'phone', 'email']
 
 
 class ProductViewSet(viewsets.ModelViewSet):
