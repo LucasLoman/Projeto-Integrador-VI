@@ -1,49 +1,34 @@
-AUTOSTOCK - FEATURE/AUTENTICACAO
+AUTOSTOCK - FEATURE/CADASTRO-PRODUTOS
 
-Arquivos desta etapa:
+1) No GitHub Desktop, fique na branch develop e faça Fetch/Pull.
+2) Crie a branch feature/cadastro-produtos a partir da develop.
+3) Extraia este ZIP.
+4) Copie as pastas backend e frontend para a raiz do projeto AutoStock.
+5) Quando o Windows perguntar, confirme a mesclagem/substituição dos arquivos.
 
-backend/autostock/settings.py
-- Configura Django REST Framework para usar JWT.
-- Configura CORS para o frontend.
+Arquivos alterados nesta etapa:
+- backend/inventory/serializers.py
+- backend/inventory/views.py
+- backend/inventory/tests.py
+- frontend/src/pages/Products.tsx
+- frontend/src/styles.css
 
-backend/autostock/urls.py
-- Cria as rotas:
-  POST /api/auth/token/
-  POST /api/auth/token/refresh/
+Funcionalidades desta branch:
+- Cadastro de produtos
+- Listagem de produtos
+- Edição de produtos
+- Exclusão de produtos
+- Pesquisa no front-end
+- Pesquisa via API usando ?search=
+- Validação de SKU e valores
+- Destaque de estoque abaixo do mínimo
+- Testes básicos de CRUD da API
 
-frontend/src/api.ts
-- Configura Axios.
-- Envia automaticamente o token Bearer.
-- Tenta renovar o access token usando o refresh token.
+Observação:
+O campo quantidade permanece somente leitura no cadastro. A quantidade deve ser alterada pelo módulo de movimentação de estoque, que será implementado em outra branch.
 
-frontend/src/pages/Login.tsx
-- Tela de login.
-- Envia usuário e senha para o backend.
-- Salva access e refresh tokens no localStorage.
+Commit sugerido:
+feat: implementa cadastro de produtos
 
-frontend/src/App.tsx
-- Protege as rotas do sistema.
-- Redireciona para /login quando não há token.
-- Implementa logout.
-
-frontend/src/styles.css
-- Inclui o estilo da tela de login.
-
-DEPENDENCIAS NECESSARIAS (já presentes no projeto completo):
-Backend:
-- djangorestframework
-- djangorestframework-simplejwt
-- django-cors-headers
-
-Frontend:
-- axios
-- react-router-dom
-
-PASSOS NO GITHUB DESKTOP:
-1. Troque para develop e faça Pull origin.
-2. Crie feature/autenticacao com source develop.
-3. Copie estes arquivos para os mesmos caminhos do projeto.
-4. Confira Changes.
-5. Commit: feat: implementa autenticacao JWT
-6. Push origin.
-7. Abra Pull Request para develop.
+Depois:
+Push origin -> Pull Request para develop -> Merge -> excluir feature/cadastro-produtos.
