@@ -1,0 +1,45 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-autostock}
+      POSTGRES_USER: ${POSTGRES_USER:-autostock}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-autostock}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-autostock} -d ${POSTGRES_DB:-autostock}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: ./backend
+    env_file:
+      - .env
+    volumes:
+      - ./backend:/app
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    command: sh -c "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
+
+  frontend:
+    build: ./frontend
+    environment:
+      VITE_API_URL: ${VITE_API_URL:-http://localhost:8000/api}
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+    command: npm run dev -- --host 0.0.0.0
+
+volumes:
+  postgres-data:
