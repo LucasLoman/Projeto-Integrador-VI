@@ -1,0 +1,49 @@
+AUTOSTOCK - FEATURE/AUTENTICACAO
+
+Arquivos desta etapa:
+
+backend/autostock/settings.py
+- Configura Django REST Framework para usar JWT.
+- Configura CORS para o frontend.
+
+backend/autostock/urls.py
+- Cria as rotas:
+  POST /api/auth/token/
+  POST /api/auth/token/refresh/
+
+frontend/src/api.ts
+- Configura Axios.
+- Envia automaticamente o token Bearer.
+- Tenta renovar o access token usando o refresh token.
+
+frontend/src/pages/Login.tsx
+- Tela de login.
+- Envia usuário e senha para o backend.
+- Salva access e refresh tokens no localStorage.
+
+frontend/src/App.tsx
+- Protege as rotas do sistema.
+- Redireciona para /login quando não há token.
+- Implementa logout.
+
+frontend/src/styles.css
+- Inclui o estilo da tela de login.
+
+DEPENDENCIAS NECESSARIAS (já presentes no projeto completo):
+Backend:
+- djangorestframework
+- djangorestframework-simplejwt
+- django-cors-headers
+
+Frontend:
+- axios
+- react-router-dom
+
+PASSOS NO GITHUB DESKTOP:
+1. Troque para develop e faça Pull origin.
+2. Crie feature/autenticacao com source develop.
+3. Copie estes arquivos para os mesmos caminhos do projeto.
+4. Confira Changes.
+5. Commit: feat: implementa autenticacao JWT
+6. Push origin.
+7. Abra Pull Request para develop.
