@@ -171,3 +171,47 @@ class CategoryCrudTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
         self.assertEqual(response.data[0]['name'], 'Freios')
+
+class BrandCrudTests(APITestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='marca_teste', password='teste123')
+        self.client.force_authenticate(self.user)
+
+    def test_create_brand(self):
+        response = self.client.post('/api/brands/', {'name': 'Bosch'}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data['name'], 'Bosch')
+
+    def test_reject_duplicate_brand_ignoring_case(self):
+        from .models import Brand
+        Brand.objects.create(name='Cobreq')
+        response = self.client.post('/api/brands/', {'name': 'cobreq'}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_update_brand(self):
+        from .models import Brand
+        brand = Brand.objects.create(name='Mann')
+        response = self.client.patch(
+            f'/api/brands/{brand.id}/',
+            {'name': 'MANN-FILTER'},
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        brand.refresh_from_db()
+        self.assertEqual(brand.name, 'MANN-FILTER')
+
+    def test_delete_brand(self):
+        from .models import Brand
+        brand = Brand.objects.create(name='Gates')
+        response = self.client.delete(f'/api/brands/{brand.id}/')
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(Brand.objects.filter(id=brand.id).exists())
+
+    def test_search_brand(self):
+        from .models import Brand
+        Brand.objects.create(name='Bosch')
+        Brand.objects.create(name='Fremax')
+        response = self.client.get('/api/brands/?search=Bos')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]['name'], 'Bosch')

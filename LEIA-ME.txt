@@ -1,44 +1,33 @@
-AUTOSTOCK - FEATURE/CADASTRO-CATEGORIAS
+FEATURE: CADASTRO DE MARCAS
 
-BRANCH: feature/cadastro-categorias
-SOURCE: develop
+Branch sugerida:
+feature/cadastro-marcas
 
-Esta etapa implementa o cadastro completo de categorias do AutoStock.
+Source:
+develop
 
-Arquivos alterados/criados:
-- backend/inventory/serializers.py
-- backend/inventory/views.py
-- backend/inventory/tests.py
-- frontend/src/App.tsx
-- frontend/src/pages/Categories.tsx
-- frontend/src/styles.css
+O que esta etapa adiciona:
+- Tela de cadastro de marcas.
+- Listagem, pesquisa, edição e exclusão.
+- Link "Marcas" no menu principal.
+- Validação para impedir nomes vazios/curtos.
+- Validação para impedir marcas duplicadas ignorando maiúsculas/minúsculas.
+- Busca por nome na API.
+- Testes básicos de CRUD e pesquisa.
 
-Funcionalidades:
-- Cadastro de categorias
-- Listagem e pesquisa
-- Edição
-- Exclusão
-- Validação de nome
-- Bloqueio de categoria duplicada ignorando maiúsculas/minúsculas
-- Pesquisa pela API usando ?search=
-- Testes básicos da API
-- Tela própria de Categorias no menu do AutoStock
-
-COMO USAR:
-1. No GitHub Desktop, atualize a develop (Fetch/Pull).
-2. Crie a branch feature/cadastro-categorias com Source = develop.
+COMO APLICAR:
+1. No GitHub Desktop, atualize a branch develop (Fetch/Pull).
+2. Crie a branch feature/cadastro-marcas com source develop.
 3. Extraia este ZIP.
 4. Copie as pastas backend e frontend para a raiz do AutoStock.
-5. Quando o Windows perguntar, escolha mesclar/substituir os arquivos.
-6. Confira os arquivos em Changes.
-7. Commit sugerido:
-   feat: implementa cadastro de categorias
+5. Quando o Windows perguntar, escolha mesclar/substituir os arquivos existentes.
+6. Revise as alterações no GitHub Desktop.
+7. Faça o commit:
+   feat: implementa cadastro de marcas
 8. Push origin.
 9. Abra Pull Request para develop.
-10. Faça o merge e apague a branch depois de confirmar que ficou correto.
+10. Após o merge, apague a branch.
 
 Observação:
-O modelo Category já existe na estrutura inicial, por isso não é necessária nova migration nesta etapa.
-
-Próxima branch sugerida:
-feature/cadastro-marcas
+A tabela/modelo Brand e a rota /api/brands/ já existem na base do projeto.
+Esta branch completa a funcionalidade com interface, validações, busca e testes.

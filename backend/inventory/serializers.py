@@ -27,6 +27,18 @@ class BrandSerializer(serializers.ModelSerializer):
         model = Brand
         fields = '__all__'
 
+    def validate_name(self, value):
+        value = value.strip()
+        if len(value) < 2:
+            raise serializers.ValidationError('Informe um nome válido para a marca.')
+
+        queryset = Brand.objects.filter(name__iexact=value)
+        if self.instance:
+            queryset = queryset.exclude(pk=self.instance.pk)
+        if queryset.exists():
+            raise serializers.ValidationError('Já existe uma marca com esse nome.')
+        return value
+
 
 class SupplierSerializer(serializers.ModelSerializer):
     class Meta:
