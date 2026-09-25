@@ -191,23 +191,62 @@ def dashboard(request):
 @api_view(['GET'])
 @permission_classes([permissions.IsAuthenticated])
 def abc_analysis(request):
-    since = timezone.now() - timedelta(days=90)
+    try:
+        days = int(request.query_params.get('days', 90))
+    except (TypeError, ValueError):
+        days = 90
+
+    # Evita períodos absurdos e mantém a consulta leve.
+    days = max(1, min(days, 3650))
+    since = timezone.now() - timedelta(days=days)
+
     rows = list(
         SaleItem.objects.filter(sale__created_at__gte=since)
         .values('product__id', 'product__sku', 'product__name')
-        .annotate(revenue=Sum('subtotal'))
-        .order_by('-revenue')
+        .annotate(
+            revenue=Sum('subtotal'),
+            qty=Sum('quantity'),
+        )
+        .order_by('-revenue', 'product__name')
     )
-    total = sum(Decimal(str(r['revenue'] or 0)) for r in rows) or Decimal('1')
+
+    total = sum(Decimal(str(row['revenue'] or 0)) for row in rows)
+
+    if total <= 0:
+        return Response([])
+
     cumulative = Decimal('0')
-    out = []
-    for r in rows:
-        rev = Decimal(str(r['revenue'] or 0))
-        cumulative += rev
-        pct = float(cumulative / total * 100)
-        cls = 'A' if pct <= 80 else ('B' if pct <= 95 else 'C')
-        out.append({**r, 'revenue': rev, 'cumulative_pct': round(pct, 2), 'class': cls})
-    return Response(out)
+    result = []
+
+    for row in rows:
+        revenue = Decimal(str(row['revenue'] or 0))
+        share_pct = (revenue / total) * Decimal('100')
+        cumulative_before = (cumulative / total) * Decimal('100')
+
+        # A: itens que compõem aproximadamente os primeiros 80% do faturamento.
+        # B: faixa seguinte até aproximadamente 95%.
+        # C: itens restantes.
+        if cumulative_before < Decimal('80'):
+            abc_class = 'A'
+        elif cumulative_before < Decimal('95'):
+            abc_class = 'B'
+        else:
+            abc_class = 'C'
+
+        cumulative += revenue
+        cumulative_pct = (cumulative / total) * Decimal('100')
+
+        result.append(
+            {
+                **row,
+                'revenue': revenue,
+                'share_pct': round(float(share_pct), 2),
+                'cumulative_pct': round(float(cumulative_pct), 2),
+                'class': abc_class,
+            }
+        )
+
+    return Response(result)
 
 
 @api_view(['GET'])

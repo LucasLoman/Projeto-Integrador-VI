@@ -1,40 +1,45 @@
-FEATURE: DASHBOARD
+FEATURE: CURVA ABC
 
 Branch sugerida:
-feature/dashboard
+feature/curva-abc
 
 Source:
 develop
 
 O que esta etapa implementa:
-- Dashboard principal do AutoStock.
-- Total de produtos ativos.
-- Quantidade de produtos com estoque baixo.
-- Quantidade de produtos zerados.
-- Total de unidades em estoque.
-- Valor estimado do estoque pelo custo.
-- Faturamento dos últimos 30 dias.
-- Quantidade de vendas dos últimos 30 dias.
-- Ticket médio dos últimos 30 dias.
-- Gráfico dos produtos com maior faturamento.
-- Lista de produtos em estoque crítico.
-- Últimas vendas registradas.
-- Lista de produtos sem venda nos últimos 90 dias.
-- Botão para atualizar os indicadores.
-- Testes da API do dashboard.
+- Curva ABC baseada no faturamento dos produtos.
+- Classificação em A, B e C.
+- Participação percentual de cada produto.
+- Percentual acumulado.
+- Quantidade vendida por produto.
+- Ordenação pelo faturamento.
+- Escolha do período:
+  * 30 dias
+  * 90 dias
+  * 180 dias
+  * 365 dias
+- Cards com quantidade de itens e faturamento por classe.
+- Gráfico dos principais produtos.
+- Tabela detalhada da Curva ABC.
+- Testes da API para ordenação, percentuais, classes e período.
+
+REGRA UTILIZADA:
+- Classe A: produtos que compõem aproximadamente os primeiros 80% do faturamento.
+- Classe B: faixa seguinte até aproximadamente 95%.
+- Classe C: produtos restantes.
 
 COMO APLICAR:
 1. No GitHub Desktop, vá para develop.
 2. Faça Fetch/Pull origin.
 3. Crie:
-   feature/dashboard
+   feature/curva-abc
    Source: develop
 4. Extraia este ZIP.
 5. Copie as pastas backend e frontend para a raiz do AutoStock.
 6. Mescle/substitua os arquivos existentes.
 7. Confira as alterações no GitHub Desktop.
 8. Commit:
-   feat: implementa dashboard gerencial
+   feat: implementa analise de curva ABC
 9. Push origin.
 10. Abra Pull Request para develop.
 11. Faça o merge e apague a branch.
@@ -42,8 +47,7 @@ COMO APLICAR:
 Arquivos desta branch:
 - backend/inventory/views.py
 - backend/inventory/tests.py
-- frontend/src/pages/Dashboard.tsx
+- frontend/src/pages/Analytics.tsx
 - frontend/src/styles.css
 
 Não é necessária nova migration nesta etapa.
-O gráfico utiliza Recharts, que já está previsto nas dependências do frontend.

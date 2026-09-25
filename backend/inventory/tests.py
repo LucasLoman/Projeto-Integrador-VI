@@ -506,3 +506,83 @@ class DashboardTests(APITestCase):
         self.assertIn('DB001', skus)
         self.assertNotIn('DB002', skus)
 
+class ABCAnalysisTests(APITestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='abc_teste', password='teste123')
+        self.client.force_authenticate(self.user)
+
+        self.products = [
+            Product.objects.create(
+                sku='ABC001',
+                name='Produto A1',
+                quantity=10,
+                min_stock=1,
+                sale_price='70.00',
+            ),
+            Product.objects.create(
+                sku='ABC002',
+                name='Produto A2',
+                quantity=10,
+                min_stock=1,
+                sale_price='15.00',
+            ),
+            Product.objects.create(
+                sku='ABC003',
+                name='Produto B',
+                quantity=10,
+                min_stock=1,
+                sale_price='10.00',
+            ),
+            Product.objects.create(
+                sku='ABC004',
+                name='Produto C',
+                quantity=10,
+                min_stock=1,
+                sale_price='5.00',
+            ),
+        ]
+
+        sale = Sale.objects.create(
+            customer_name='Cliente ABC',
+            total='100.00',
+            created_by=self.user,
+        )
+
+        values = ['70.00', '15.00', '10.00', '5.00']
+        for product, value in zip(self.products, values):
+            SaleItem.objects.create(
+                sale=sale,
+                product=product,
+                quantity=1,
+                unit_price=value,
+            )
+
+    def test_abc_returns_products_ordered_by_revenue(self):
+        response = self.client.get('/api/analytics/abc/?days=90')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 4)
+        self.assertEqual(response.data[0]['product__sku'], 'ABC001')
+        self.assertEqual(response.data[-1]['product__sku'], 'ABC004')
+
+    def test_abc_calculates_share_and_cumulative_percentage(self):
+        response = self.client.get('/api/analytics/abc/?days=90')
+        first = response.data[0]
+        second = response.data[1]
+
+        self.assertEqual(first['share_pct'], 70.0)
+        self.assertEqual(first['cumulative_pct'], 70.0)
+        self.assertEqual(second['cumulative_pct'], 85.0)
+
+    def test_abc_assigns_classes(self):
+        response = self.client.get('/api/analytics/abc/?days=90')
+        classes = {item['product__sku']: item['class'] for item in response.data}
+
+        self.assertEqual(classes['ABC001'], 'A')
+        self.assertEqual(classes['ABC002'], 'A')
+        self.assertEqual(classes['ABC003'], 'B')
+        self.assertEqual(classes['ABC004'], 'C')
+
+    def test_abc_accepts_period_parameter(self):
+        response = self.client.get('/api/analytics/abc/?days=30')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
