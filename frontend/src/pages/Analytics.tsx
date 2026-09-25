@@ -57,6 +57,32 @@ type SlowProductsResponse = {
   items: SlowProduct[]
 }
 
+
+type RuptureRisk = 'RUPTURA' | 'CRITICO' | 'ATENCAO' | 'OK' | 'SEM_HISTORICO'
+
+type RuptureItem = {
+  product_id: number
+  sku: string
+  name: string
+  quantity: number
+  sold_qty: number
+  analysis_days: number
+  avg_daily: number
+  lead_time_days: number
+  safety_days: number
+  coverage_days: number | null
+  rupture_date: string | null
+  risk: RuptureRisk
+  supplier?: string | null
+}
+
+type RuptureResponse = {
+  analysis_days: number
+  safety_days: number
+  summary: Record<RuptureRisk, number>
+  items: RuptureItem[]
+}
+
 const money = (value: string | number) =>
   Number(value || 0).toLocaleString('pt-BR', {
     style: 'currency',
@@ -74,8 +100,22 @@ export default function Analytics() {
   })
   const [days, setDays] = useState(90)
   const [slowDays, setSlowDays] = useState(90)
+  const [ruptureDays, setRuptureDays] = useState(30)
+  const [rupture, setRupture] = useState<RuptureResponse>({
+    analysis_days: 30,
+    safety_days: 3,
+    summary: {
+      RUPTURA: 0,
+      CRITICO: 0,
+      ATENCAO: 0,
+      OK: 0,
+      SEM_HISTORICO: 0,
+    },
+    items: [],
+  })
   const [loading, setLoading] = useState(false)
   const [slowLoading, setSlowLoading] = useState(false)
+  const [ruptureLoading, setRuptureLoading] = useState(false)
   const [error, setError] = useState('')
 
   async function loadABC(period = days) {
@@ -112,9 +152,24 @@ export default function Analytics() {
     }
   }
 
+  async function loadRuptureForecast(period = ruptureDays) {
+    setRuptureLoading(true)
+    try {
+      const response = await api.get(
+        `/analytics/rupture-forecast/?days=${period}&safety_days=3`,
+      )
+      setRupture(response.data)
+    } catch {
+      setError('Não foi possível calcular a previsão de ruptura.')
+    } finally {
+      setRuptureLoading(false)
+    }
+  }
+
   useEffect(() => {
     loadABC(days)
     loadSlowProducts(slowDays)
+    loadRuptureForecast(ruptureDays)
     loadReplenishment()
   }, [])
 
@@ -158,6 +213,22 @@ export default function Analytics() {
   function changeSlowPeriod(value: number) {
     setSlowDays(value)
     loadSlowProducts(value)
+  }
+
+  function changeRupturePeriod(value: number) {
+    setRuptureDays(value)
+    loadRuptureForecast(value)
+  }
+
+  function riskLabel(risk: RuptureRisk) {
+    const labels: Record<RuptureRisk, string> = {
+      RUPTURA: 'Sem estoque',
+      CRITICO: 'Crítico',
+      ATENCAO: 'Atenção',
+      OK: 'Normal',
+      SEM_HISTORICO: 'Sem histórico',
+    }
+    return labels[risk]
   }
 
   return (
@@ -376,6 +447,114 @@ export default function Analytics() {
             </tbody>
           </table>
         </div>
+      </section>
+
+      <section>
+        <div className="page-header">
+          <div>
+            <h3>Previsão de ruptura</h3>
+            <p className="muted">
+              Estimativa de quantos dias o estoque atual deve durar com base no
+              consumo médio recente e no prazo de entrega do fornecedor.
+            </p>
+          </div>
+
+          <select
+            value={ruptureDays}
+            onChange={(e) => changeRupturePeriod(Number(e.target.value))}
+          >
+            <option value={30}>Consumo dos últimos 30 dias</option>
+            <option value={60}>Consumo dos últimos 60 dias</option>
+            <option value={90}>Consumo dos últimos 90 dias</option>
+          </select>
+        </div>
+
+        <div className="abc-summary">
+          <div className="card">
+            <span className="muted">Sem estoque</span>
+            <strong>{rupture.summary.RUPTURA}</strong>
+          </div>
+
+          <div className="card">
+            <span className="muted">Críticos</span>
+            <strong>{rupture.summary.CRITICO}</strong>
+          </div>
+
+          <div className="card">
+            <span className="muted">Em atenção</span>
+            <strong>{rupture.summary.ATENCAO}</strong>
+          </div>
+
+          <div className="card">
+            <span className="muted">Situação normal</span>
+            <strong>{rupture.summary.OK}</strong>
+          </div>
+        </div>
+
+        <p className="muted">
+          O risco é calculado comparando os dias de cobertura do estoque com o
+          prazo médio de entrega do fornecedor, utilizando uma margem adicional
+          de {rupture.safety_days} dias para o status de atenção.
+        </p>
+
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Risco</th>
+                <th>SKU</th>
+                <th>Produto</th>
+                <th>Estoque</th>
+                <th>Venda no período</th>
+                <th>Média/dia</th>
+                <th>Cobertura</th>
+                <th>Prazo fornecedor</th>
+                <th>Ruptura estimada</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {ruptureLoading ? (
+                <tr><td colSpan={9}>Calculando previsão de ruptura...</td></tr>
+              ) : rupture.items.length === 0 ? (
+                <tr><td colSpan={9}>Nenhum produto disponível para análise.</td></tr>
+              ) : (
+                rupture.items.map((item) => (
+                  <tr key={item.product_id}>
+                    <td><strong>{riskLabel(item.risk)}</strong></td>
+                    <td>{item.sku}</td>
+                    <td>
+                      {item.name}
+                      <br />
+                      <small className="muted">{item.supplier || 'Sem fornecedor definido'}</small>
+                    </td>
+                    <td>{item.quantity}</td>
+                    <td>{item.sold_qty}</td>
+                    <td>{item.avg_daily.toFixed(2)}</td>
+                    <td>
+                      {item.coverage_days === null
+                        ? '-'
+                        : `${item.coverage_days.toFixed(1)} dias`}
+                    </td>
+                    <td>{item.lead_time_days} dias</td>
+                    <td>
+                      {item.rupture_date
+                        ? new Date(item.rupture_date).toLocaleDateString('pt-BR')
+                        : 'Sem previsão'}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {rupture.summary.SEM_HISTORICO > 0 && (
+          <p className="muted">
+            {rupture.summary.SEM_HISTORICO} produto(s) não possuem vendas no período
+            analisado e, por isso, não têm previsão de ruptura calculada.
+          </p>
+        )}
       </section>
 
       <section>

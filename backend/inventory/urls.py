@@ -1,6 +1,6 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import CategoryViewSet, BrandViewSet, SupplierViewSet, ProductViewSet, StockMovementViewSet, SaleViewSet, dashboard, abc_analysis, slow_products, replenishment
+from .views import CategoryViewSet, BrandViewSet, SupplierViewSet, ProductViewSet, StockMovementViewSet, SaleViewSet, dashboard, abc_analysis, slow_products, rupture_forecast, replenishment
 
 router=DefaultRouter()
 router.register('categories',CategoryViewSet)
@@ -15,5 +15,6 @@ urlpatterns=[
  path('dashboard/',dashboard),
  path('analytics/abc/',abc_analysis),
  path('analytics/slow-products/',slow_products),
+ path('analytics/rupture-forecast/',rupture_forecast),
  path('analytics/replenishment/',replenishment),
 ]
