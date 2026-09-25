@@ -26,6 +26,8 @@ class CategoryViewSet(viewsets.ModelViewSet):
 class BrandViewSet(viewsets.ModelViewSet):
     queryset = Brand.objects.all().order_by('name')
     serializer_class = BrandSerializer
+    filter_backends = [filters.SearchFilter]
+    search_fields = ['name']
 
 
 class SupplierViewSet(viewsets.ModelViewSet):
