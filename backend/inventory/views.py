@@ -1,4 +1,5 @@
 from datetime import timedelta
+from math import ceil
 from decimal import Decimal
 from django.db.models import Sum, F, Max, DecimalField, ExpressionWrapper
 from django.utils import timezone
@@ -462,39 +463,152 @@ def rupture_forecast(request):
 @api_view(['GET'])
 @permission_classes([permissions.IsAuthenticated])
 def replenishment(request):
-    days = int(request.query_params.get('days', 30))
+    """
+    Sugestão de reposição baseada no histórico de vendas.
+
+    Regras:
+    - consumo médio diário = vendas do período / dias analisados
+    - estoque de segurança = maior entre estoque mínimo e consumo dos dias de segurança
+    - ponto de reposição = consumo no prazo do fornecedor + estoque de segurança
+    - estoque alvo = consumo no prazo + dias alvo + estoque de segurança
+    - produtos sem giro não recebem sugestão automática de compra
+    """
+    try:
+        days = int(request.query_params.get('days', 30))
+    except (TypeError, ValueError):
+        days = 30
+
+    try:
+        safety_days = int(request.query_params.get('safety_days', 3))
+    except (TypeError, ValueError):
+        safety_days = 3
+
+    try:
+        target_days = int(request.query_params.get('target_days', 15))
+    except (TypeError, ValueError):
+        target_days = 15
+
+    days = max(7, min(days, 365))
+    safety_days = max(0, min(safety_days, 30))
+    target_days = max(1, min(target_days, 90))
+
     since = timezone.now() - timedelta(days=days)
-    sales = SaleItem.objects.filter(sale__created_at__gte=since).values('product_id').annotate(qty=Sum('quantity'))
-    sold = {x['product_id']: x['qty'] for x in sales}
-    result = []
-    for p in Product.objects.filter(active=True).select_related('supplier'):
-        avg_daily = (sold.get(p.id, 0) or 0) / max(days, 1)
-        lead = p.supplier.lead_time_days if p.supplier else 7
-        coverage = (p.quantity / avg_daily) if avg_daily > 0 else None
-        safety = max(p.min_stock, int(round(avg_daily * 3)))
-        target = int(round(avg_daily * (lead + 7))) + safety
-        suggested = max(0, target - p.quantity)
-        risk = (
-            'SEM_GIRO'
-            if avg_daily == 0
-            else (
-                'CRITICO'
-                if coverage is not None and coverage < lead
-                else ('ATENCAO' if coverage is not None and coverage < lead + 3 else 'OK')
+
+    sales = (
+        SaleItem.objects.filter(sale__created_at__gte=since)
+        .values('product_id')
+        .annotate(qty=Sum('quantity'))
+    )
+    sold_map = {row['product_id']: row['qty'] or 0 for row in sales}
+
+    items = []
+    total_units = 0
+    total_cost = Decimal('0')
+    products_to_buy = 0
+
+    products = (
+        Product.objects.filter(active=True)
+        .select_related('supplier')
+        .order_by('name')
+    )
+
+    for product in products:
+        sold_qty = sold_map.get(product.id, 0)
+        avg_daily = sold_qty / days
+        lead_time = product.supplier.lead_time_days if product.supplier else 7
+
+        if avg_daily <= 0:
+            coverage_days = None
+            safety_stock = product.min_stock
+            reorder_point = product.min_stock
+            target_stock = product.min_stock
+            suggested_purchase = 0
+            risk = 'SEM_GIRO'
+        else:
+            coverage_days = product.quantity / avg_daily
+            safety_stock = max(
+                product.min_stock,
+                ceil(avg_daily * safety_days),
             )
-        )
-        result.append(
+            reorder_point = ceil(avg_daily * lead_time) + safety_stock
+            target_stock = (
+                ceil(avg_daily * (lead_time + target_days))
+                + safety_stock
+            )
+
+            if product.quantity <= 0:
+                risk = 'RUPTURA'
+            elif product.quantity <= reorder_point:
+                risk = 'REPOR'
+            elif coverage_days <= lead_time + safety_days:
+                risk = 'ATENCAO'
+            else:
+                risk = 'OK'
+
+            suggested_purchase = (
+                max(0, target_stock - product.quantity)
+                if product.quantity <= reorder_point
+                else 0
+            )
+
+        estimated_cost = Decimal(product.cost_price) * suggested_purchase
+
+        if suggested_purchase > 0:
+            products_to_buy += 1
+            total_units += suggested_purchase
+            total_cost += estimated_cost
+
+        items.append(
             {
-                'product_id': p.id,
-                'sku': p.sku,
-                'name': p.name,
-                'quantity': p.quantity,
+                'product_id': product.id,
+                'sku': product.sku,
+                'name': product.name,
+                'supplier': product.supplier.name if product.supplier else None,
+                'quantity': product.quantity,
+                'min_stock': product.min_stock,
+                'sold_qty': sold_qty,
                 'avg_daily': round(avg_daily, 2),
-                'lead_time_days': lead,
-                'coverage_days': round(coverage, 1) if coverage is not None else None,
+                'lead_time_days': lead_time,
+                'safety_days': safety_days,
+                'safety_stock': safety_stock,
+                'reorder_point': reorder_point,
+                'target_days': target_days,
+                'target_stock': target_stock,
+                'coverage_days': round(coverage_days, 1) if coverage_days is not None else None,
                 'risk': risk,
-                'suggested_purchase': suggested,
+                'suggested_purchase': suggested_purchase,
+                'cost_price': product.cost_price,
+                'estimated_purchase_cost': estimated_cost,
             }
         )
-    result.sort(key=lambda x: ({'CRITICO': 0, 'ATENCAO': 1, 'OK': 2, 'SEM_GIRO': 3}[x['risk']], -x['suggested_purchase']))
-    return Response(result)
+
+    risk_order = {
+        'RUPTURA': 0,
+        'REPOR': 1,
+        'ATENCAO': 2,
+        'OK': 3,
+        'SEM_GIRO': 4,
+    }
+
+    items.sort(
+        key=lambda item: (
+            risk_order[item['risk']],
+            -item['suggested_purchase'],
+            item['name'].lower(),
+        )
+    )
+
+    return Response(
+        {
+            'analysis_days': days,
+            'safety_days': safety_days,
+            'target_days': target_days,
+            'summary': {
+                'products_to_buy': products_to_buy,
+                'total_units': total_units,
+                'estimated_cost': total_cost,
+            },
+            'items': items,
+        }
+    )
+

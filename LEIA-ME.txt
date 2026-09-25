@@ -1,67 +1,69 @@
-FEATURE: PREVISÃO DE RUPTURA
+FEATURE: SUGESTÃO DE REPOSIÇÃO
 
 Branch sugerida:
-feature/previsao-ruptura
+feature/sugestao-reposicao
 
 Source:
 develop
 
 O que esta etapa implementa:
-- Previsão de quantos dias o estoque atual deve durar.
-- Consumo médio diário calculado pelas vendas recentes.
-- Períodos de análise:
-  * 30 dias
-  * 60 dias
-  * 90 dias
+- Sugestão automática de quais produtos devem ser comprados.
+- Quantidade recomendada para compra.
+- Custo estimado da reposição.
+- Consumo médio diário com base nas vendas.
 - Prazo médio de entrega do fornecedor.
-- Data estimada de ruptura do estoque.
-- Classificação de risco:
-  * RUPTURA = estoque já zerado e existe consumo histórico
-  * CRITICO = cobertura menor ou igual ao prazo do fornecedor
-  * ATENCAO = cobertura próxima do prazo do fornecedor
-  * OK = cobertura confortável
-  * SEM_HISTORICO = sem vendas suficientes no período
-- Resumo da quantidade de produtos em cada situação.
-- Tabela detalhada dentro da tela "Análises".
+- Estoque de segurança.
+- Ponto de reposição.
+- Estoque alvo após a compra.
+- Período de consumo configurável: 30, 60 ou 90 dias.
+- Meta de cobertura adicional configurável: 7, 15 ou 30 dias.
+- Produtos sem giro NÃO recebem sugestão automática de compra.
+- Resumo com quantidade de produtos, unidades e custo estimado.
 - Testes automatizados da API.
 
-FÓRMULA PRINCIPAL:
-Consumo médio diário = quantidade vendida / dias analisados
+FÓRMULAS:
 
-Cobertura em dias = estoque atual / consumo médio diário
+Consumo médio diário:
+vendas no período / dias analisados
 
-Exemplo:
-Estoque atual = 10 unidades
-Vendas nos últimos 30 dias = 60 unidades
-Consumo médio = 2 unidades/dia
-Cobertura = 5 dias
+Estoque de segurança:
+maior valor entre estoque mínimo e consumo médio x dias de segurança
 
-Se o fornecedor demora 7 dias para entregar:
-o produto é classificado como CRÍTICO.
+Ponto de reposição:
+(consumo médio x prazo do fornecedor) + estoque de segurança
 
-Nova rota:
-GET /api/analytics/rupture-forecast/?days=30&safety_days=3
+Estoque alvo:
+(consumo médio x (prazo do fornecedor + dias alvo)) + estoque de segurança
+
+Quantidade sugerida:
+estoque alvo - estoque atual
+
+A compra só é recomendada quando o estoque atual estiver no ponto de reposição
+ou abaixo dele.
+
+Rota:
+GET /api/analytics/replenishment/?days=30&safety_days=3&target_days=15
 
 COMO APLICAR:
 1. No GitHub Desktop, vá para develop.
 2. Faça Fetch/Pull origin.
 3. Crie:
-   feature/previsao-ruptura
+   feature/sugestao-reposicao
    Source: develop
 4. Extraia este ZIP.
 5. Copie as pastas backend e frontend para a raiz do AutoStock.
 6. Mescle/substitua os arquivos existentes.
 7. Confira as alterações no GitHub Desktop.
 8. Commit:
-   feat: implementa previsao de ruptura de estoque
+   feat: implementa sugestao automatica de reposicao
 9. Push origin.
 10. Abra Pull Request para develop.
 11. Faça o merge e apague a branch.
 
 Arquivos desta branch:
 - backend/inventory/views.py
-- backend/inventory/urls.py
 - backend/inventory/tests.py
 - frontend/src/pages/Analytics.tsx
+- frontend/src/styles.css
 
 Não é necessária nova migration nesta etapa.
