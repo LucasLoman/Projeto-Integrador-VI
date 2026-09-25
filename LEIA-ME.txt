@@ -1,33 +1,53 @@
-FEATURE: CADASTRO DE MARCAS
+FEATURE: MOVIMENTAÇÃO DE ESTOQUE
 
 Branch sugerida:
-feature/cadastro-marcas
+feature/movimentacao-estoque
 
 Source:
 develop
 
-O que esta etapa adiciona:
-- Tela de cadastro de marcas.
-- Listagem, pesquisa, edição e exclusão.
-- Link "Marcas" no menu principal.
-- Validação para impedir nomes vazios/curtos.
-- Validação para impedir marcas duplicadas ignorando maiúsculas/minúsculas.
-- Busca por nome na API.
-- Testes básicos de CRUD e pesquisa.
+O que esta etapa implementa:
+- Entrada de produtos no estoque.
+- Saída manual de produtos.
+- Ajuste de inventário.
+- Atualização automática do saldo do produto.
+- Bloqueio de saída maior que o estoque disponível.
+- Registro do usuário responsável pela movimentação.
+- Custo unitário opcional nas entradas.
+- Campo de observação.
+- Histórico de movimentações.
+- Pesquisa por SKU, produto ou observação.
+- Filtro por tipo de movimentação.
+- Testes de entrada, saída, ajuste e estoque insuficiente.
+
+IMPORTANTE SOBRE "AJUSTE":
+Ao selecionar "Ajuste de estoque", a quantidade digitada representa o NOVO SALDO.
+Exemplo:
+Estoque atual = 10
+Ajuste informado = 8
+Novo estoque = 8
 
 COMO APLICAR:
-1. No GitHub Desktop, atualize a branch develop (Fetch/Pull).
-2. Crie a branch feature/cadastro-marcas com source develop.
-3. Extraia este ZIP.
-4. Copie as pastas backend e frontend para a raiz do AutoStock.
-5. Quando o Windows perguntar, escolha mesclar/substituir os arquivos existentes.
-6. Revise as alterações no GitHub Desktop.
-7. Faça o commit:
-   feat: implementa cadastro de marcas
-8. Push origin.
-9. Abra Pull Request para develop.
-10. Após o merge, apague a branch.
+1. No GitHub Desktop, vá para develop.
+2. Faça Fetch/Pull origin.
+3. Crie:
+   feature/movimentacao-estoque
+   Source: develop
+4. Extraia este ZIP.
+5. Copie as pastas backend e frontend para a raiz do AutoStock.
+6. Mescle/substitua os arquivos quando solicitado.
+7. Confira as alterações no GitHub Desktop.
+8. Commit:
+   feat: implementa movimentacao de estoque
+9. Push origin.
+10. Abra Pull Request para develop.
+11. Faça o merge e apague a branch.
 
-Observação:
-A tabela/modelo Brand e a rota /api/brands/ já existem na base do projeto.
-Esta branch completa a funcionalidade com interface, validações, busca e testes.
+Arquivos desta branch:
+- backend/inventory/serializers.py
+- backend/inventory/views.py
+- backend/inventory/tests.py
+- frontend/src/pages/Movements.tsx
+
+Não é necessária nova migration nesta etapa porque o modelo StockMovement
+já faz parte da estrutura inicial do AutoStock.

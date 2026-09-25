@@ -45,9 +45,25 @@ class ProductViewSet(viewsets.ModelViewSet):
 
 
 class StockMovementViewSet(viewsets.ModelViewSet):
-    queryset = StockMovement.objects.select_related('product').all().order_by('-created_at')
+    queryset = StockMovement.objects.select_related('product', 'created_by').all().order_by('-created_at')
     serializer_class = StockMovementSerializer
     http_method_names = ['get', 'post', 'head', 'options']
+    filter_backends = [filters.SearchFilter]
+    search_fields = ['product__sku', 'product__name', 'note']
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+
+        product_id = self.request.query_params.get('product')
+        movement_type = self.request.query_params.get('type')
+
+        if product_id:
+            queryset = queryset.filter(product_id=product_id)
+
+        if movement_type in {StockMovement.IN, StockMovement.OUT, StockMovement.ADJ}:
+            queryset = queryset.filter(movement_type=movement_type)
+
+        return queryset
 
 
 class SaleViewSet(viewsets.ModelViewSet):

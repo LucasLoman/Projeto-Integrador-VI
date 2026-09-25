@@ -61,19 +61,88 @@ class ProductCrudTests(APITestCase):
 
 class StockMovementTests(APITestCase):
     def setUp(self):
-        self.user = User.objects.create_user(username='teste', password='teste123')
+        self.user = User.objects.create_user(username='estoque_teste', password='teste123')
         self.client.force_authenticate(self.user)
-        self.product = Product.objects.create(sku='P001', name='Produto Teste', quantity=10, min_stock=2)
+        self.product = Product.objects.create(
+            sku='P001',
+            name='Produto Teste',
+            quantity=10,
+            min_stock=2,
+        )
 
     def test_stock_increases_on_entry(self):
         response = self.client.post(
             '/api/movements/',
-            {'product': self.product.id, 'movement_type': 'IN', 'quantity': 5},
+            {
+                'product': self.product.id,
+                'movement_type': 'IN',
+                'quantity': 5,
+                'unit_cost': '20.50',
+                'note': 'Compra do fornecedor',
+            },
             format='json',
         )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.product.refresh_from_db()
         self.assertEqual(self.product.quantity, 15)
+
+    def test_stock_decreases_on_exit(self):
+        response = self.client.post(
+            '/api/movements/',
+            {'product': self.product.id, 'movement_type': 'OUT', 'quantity': 4},
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.product.refresh_from_db()
+        self.assertEqual(self.product.quantity, 6)
+
+    def test_reject_exit_when_stock_is_insufficient(self):
+        response = self.client.post(
+            '/api/movements/',
+            {'product': self.product.id, 'movement_type': 'OUT', 'quantity': 11},
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.product.refresh_from_db()
+        self.assertEqual(self.product.quantity, 10)
+
+    def test_adjustment_sets_exact_stock(self):
+        response = self.client.post(
+            '/api/movements/',
+            {'product': self.product.id, 'movement_type': 'ADJ', 'quantity': 7},
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.product.refresh_from_db()
+        self.assertEqual(self.product.quantity, 7)
+
+    def test_movement_records_authenticated_user(self):
+        response = self.client.post(
+            '/api/movements/',
+            {'product': self.product.id, 'movement_type': 'IN', 'quantity': 1},
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        movement = StockMovement.objects.latest('id')
+        self.assertEqual(movement.created_by, self.user)
+
+    def test_filter_movements_by_type(self):
+        StockMovement.objects.create(
+            product=self.product,
+            movement_type=StockMovement.IN,
+            quantity=2,
+            created_by=self.user,
+        )
+        StockMovement.objects.create(
+            product=self.product,
+            movement_type=StockMovement.OUT,
+            quantity=1,
+            created_by=self.user,
+        )
+        response = self.client.get('/api/movements/?type=IN')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]['movement_type'], 'IN')
 
 
 class SupplierCrudTests(APITestCase):

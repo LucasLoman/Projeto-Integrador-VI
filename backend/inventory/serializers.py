@@ -96,11 +96,37 @@ class ProductSerializer(serializers.ModelSerializer):
 
 class StockMovementSerializer(serializers.ModelSerializer):
     product_name = serializers.CharField(source='product.name', read_only=True)
+    product_sku = serializers.CharField(source='product.sku', read_only=True)
+    stock_after = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = StockMovement
         fields = '__all__'
         read_only_fields = ['created_by', 'created_at']
+
+    def get_stock_after(self, obj):
+        return obj.product.quantity
+
+    def validate_quantity(self, value):
+        if value <= 0:
+            raise serializers.ValidationError('A quantidade deve ser maior que zero.')
+        return value
+
+    def validate(self, attrs):
+        product = attrs.get('product')
+        movement_type = attrs.get('movement_type')
+
+        if product and not product.active:
+            raise serializers.ValidationError({'product': 'O produto está inativo.'})
+
+        if movement_type == StockMovement.OUT and product:
+            quantity = attrs.get('quantity', 0)
+            if product.quantity < quantity:
+                raise serializers.ValidationError(
+                    {'quantity': f'Estoque insuficiente. Disponível: {product.quantity}.'}
+                )
+
+        return attrs
 
     def create(self, validated_data):
         try:
