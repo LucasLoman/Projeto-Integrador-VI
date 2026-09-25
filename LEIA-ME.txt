@@ -1,48 +1,49 @@
-FEATURE: ESTOQUE MÍNIMO
+FEATURE: DASHBOARD
 
 Branch sugerida:
-feature/estoque-minimo
+feature/dashboard
 
 Source:
 develop
 
 O que esta etapa implementa:
-- Identificação automática de produtos no estoque mínimo.
-- Identificação separada de produtos zerados.
-- Status de estoque retornado pela API:
-  * OK
-  * ESTOQUE_BAIXO
-  * SEM_ESTOQUE
-- Cálculo do déficit até o estoque mínimo.
-- Filtro na API:
-  /api/products/?low_stock=true
-- Filtro opcional por produto ativo/inativo.
-- Nova tela "Estoque mínimo".
-- Pesquisa por SKU, produto, fornecedor ou localização.
-- Indicadores de quantidade de produtos em atenção e produtos zerados.
-- Testes da API para filtro, status e déficit.
+- Dashboard principal do AutoStock.
+- Total de produtos ativos.
+- Quantidade de produtos com estoque baixo.
+- Quantidade de produtos zerados.
+- Total de unidades em estoque.
+- Valor estimado do estoque pelo custo.
+- Faturamento dos últimos 30 dias.
+- Quantidade de vendas dos últimos 30 dias.
+- Ticket médio dos últimos 30 dias.
+- Gráfico dos produtos com maior faturamento.
+- Lista de produtos em estoque crítico.
+- Últimas vendas registradas.
+- Lista de produtos sem venda nos últimos 90 dias.
+- Botão para atualizar os indicadores.
+- Testes da API do dashboard.
 
 COMO APLICAR:
 1. No GitHub Desktop, vá para develop.
 2. Faça Fetch/Pull origin.
 3. Crie:
-   feature/estoque-minimo
+   feature/dashboard
    Source: develop
 4. Extraia este ZIP.
 5. Copie as pastas backend e frontend para a raiz do AutoStock.
 6. Mescle/substitua os arquivos existentes.
 7. Confira as alterações no GitHub Desktop.
 8. Commit:
-   feat: implementa controle de estoque minimo
+   feat: implementa dashboard gerencial
 9. Push origin.
 10. Abra Pull Request para develop.
 11. Faça o merge e apague a branch.
 
 Arquivos desta branch:
-- backend/inventory/serializers.py
 - backend/inventory/views.py
 - backend/inventory/tests.py
-- frontend/src/App.tsx
-- frontend/src/pages/LowStock.tsx
+- frontend/src/pages/Dashboard.tsx
+- frontend/src/styles.css
 
-Não é necessária nova migration, pois o campo min_stock já existe no modelo Product.
+Não é necessária nova migration nesta etapa.
+O gráfico utiliza Recharts, que já está previsto nas dependências do frontend.

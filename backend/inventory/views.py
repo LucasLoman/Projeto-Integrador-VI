@@ -115,8 +115,16 @@ def dashboard(request):
     today = timezone.now()
     since30 = today - timedelta(days=30)
     since90 = today - timedelta(days=90)
+
     products = Product.objects.filter(active=True)
+    sales_30_queryset = Sale.objects.filter(created_at__gte=since30)
+
+    products_count = products.count()
     low_stock = products.filter(quantity__lte=F('min_stock')).count()
+    out_of_stock = products.filter(quantity__lte=0).count()
+
+    inventory_units = products.aggregate(v=Sum('quantity'))['v'] or 0
+
     inventory_value = products.aggregate(
         v=Sum(
             ExpressionWrapper(
@@ -125,23 +133,57 @@ def dashboard(request):
             )
         )
     )['v'] or 0
-    sales30 = Sale.objects.filter(created_at__gte=since30).aggregate(v=Sum('total'))['v'] or 0
-    top = list(
+
+    sales_30d = sales_30_queryset.aggregate(v=Sum('total'))['v'] or 0
+    sales_count_30d = sales_30_queryset.count()
+    avg_ticket_30d = (
+        Decimal(str(sales_30d)) / sales_count_30d
+        if sales_count_30d
+        else Decimal('0')
+    )
+
+    top_products = list(
         SaleItem.objects.filter(sale__created_at__gte=since30)
-        .values('product__id', 'product__name')
+        .values('product__id', 'product__sku', 'product__name')
         .annotate(qty=Sum('quantity'), revenue=Sum('subtotal'))
         .order_by('-revenue')[:10]
     )
-    sold_ids = SaleItem.objects.filter(sale__created_at__gte=since90).values_list('product_id', flat=True)
-    slow = list(products.exclude(id__in=sold_ids).values('id', 'sku', 'name', 'quantity')[:20])
+
+    sold_ids_90d = SaleItem.objects.filter(
+        sale__created_at__gte=since90
+    ).values_list('product_id', flat=True)
+
+    slow_products = list(
+        products.exclude(id__in=sold_ids_90d)
+        .values('id', 'sku', 'name', 'quantity', 'min_stock')
+        .order_by('name')[:20]
+    )
+
+    low_stock_products = list(
+        products.filter(quantity__lte=F('min_stock'))
+        .values('id', 'sku', 'name', 'quantity', 'min_stock')
+        .order_by('quantity', 'name')[:10]
+    )
+
+    recent_sales = list(
+        Sale.objects.order_by('-created_at')
+        .values('id', 'customer_name', 'total', 'created_at')[:5]
+    )
+
     return Response(
         {
-            'products': products.count(),
+            'products': products_count,
             'low_stock': low_stock,
+            'out_of_stock': out_of_stock,
+            'inventory_units': inventory_units,
             'inventory_value': inventory_value,
-            'sales_30d': sales30,
-            'top_products': top,
-            'slow_products': slow,
+            'sales_30d': sales_30d,
+            'sales_count_30d': sales_count_30d,
+            'avg_ticket_30d': avg_ticket_30d,
+            'top_products': top_products,
+            'slow_products': slow_products,
+            'low_stock_products': low_stock_products,
+            'recent_sales': recent_sales,
         }
     )
 

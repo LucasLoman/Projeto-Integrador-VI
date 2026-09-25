@@ -447,3 +447,62 @@ class MinimumStockTests(APITestCase):
         self.assertEqual(response.data['stock_status'], 'OK')
         self.assertEqual(response.data['stock_difference'], 0)
 
+class DashboardTests(APITestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='dashboard_teste', password='teste123')
+        self.client.force_authenticate(self.user)
+
+        self.low_product = Product.objects.create(
+            sku='DB001',
+            name='Pastilha',
+            quantity=2,
+            min_stock=5,
+            cost_price='50.00',
+            sale_price='100.00',
+        )
+        self.ok_product = Product.objects.create(
+            sku='DB002',
+            name='Filtro',
+            quantity=10,
+            min_stock=3,
+            cost_price='20.00',
+            sale_price='40.00',
+        )
+
+        self.sale = Sale.objects.create(
+            customer_name='Cliente Dashboard',
+            total='200.00',
+            created_by=self.user,
+        )
+        SaleItem.objects.create(
+            sale=self.sale,
+            product=self.low_product,
+            quantity=2,
+            unit_price='100.00',
+        )
+
+    def test_dashboard_returns_main_indicators(self):
+        response = self.client.get('/api/dashboard/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        self.assertEqual(response.data['products'], 2)
+        self.assertEqual(response.data['low_stock'], 1)
+        self.assertEqual(response.data['out_of_stock'], 0)
+        self.assertEqual(response.data['inventory_units'], 12)
+        self.assertEqual(response.data['sales_count_30d'], 1)
+        self.assertEqual(str(response.data['sales_30d']), '200.00')
+        self.assertEqual(str(response.data['avg_ticket_30d']), '200.00')
+
+    def test_dashboard_lists_top_selling_product(self):
+        response = self.client.get('/api/dashboard/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data['top_products']), 1)
+        self.assertEqual(response.data['top_products'][0]['product__sku'], 'DB001')
+
+    def test_dashboard_lists_low_stock_products(self):
+        response = self.client.get('/api/dashboard/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        skus = {item['sku'] for item in response.data['low_stock_products']}
+        self.assertIn('DB001', skus)
+        self.assertNotIn('DB002', skus)
+
