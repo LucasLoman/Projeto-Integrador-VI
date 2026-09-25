@@ -1,7 +1,7 @@
 from django.contrib.auth.models import User
 from rest_framework.test import APITestCase
 from rest_framework import status
-from .models import Product, StockMovement
+from .models import Product, StockMovement, Sale, SaleItem
 
 
 class ProductCrudTests(APITestCase):
@@ -284,3 +284,113 @@ class BrandCrudTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
         self.assertEqual(response.data[0]['name'], 'Bosch')
+
+class SaleTests(APITestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='vendas_teste', password='teste123')
+        self.client.force_authenticate(self.user)
+        self.product_a = Product.objects.create(
+            sku='PA001',
+            name='Pastilha de Freio',
+            quantity=10,
+            min_stock=2,
+            sale_price='100.00',
+        )
+        self.product_b = Product.objects.create(
+            sku='OL001',
+            name='Óleo 5W30',
+            quantity=20,
+            min_stock=5,
+            sale_price='40.00',
+        )
+
+    def test_create_sale_with_multiple_items_and_reduce_stock(self):
+        response = self.client.post(
+            '/api/sales/',
+            {
+                'customer_name': 'Cliente Teste',
+                'items': [
+                    {'product': self.product_a.id, 'quantity': 2},
+                    {'product': self.product_b.id, 'quantity': 3},
+                ],
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(str(response.data['total']), '320.00')
+
+        self.product_a.refresh_from_db()
+        self.product_b.refresh_from_db()
+        self.assertEqual(self.product_a.quantity, 8)
+        self.assertEqual(self.product_b.quantity, 17)
+
+        sale = Sale.objects.get(pk=response.data['id'])
+        self.assertEqual(sale.items.count(), 2)
+        self.assertEqual(
+            StockMovement.objects.filter(note=f'Venda #{sale.id}').count(),
+            2,
+        )
+
+    def test_sale_accepts_custom_unit_price(self):
+        response = self.client.post(
+            '/api/sales/',
+            {
+                'items': [
+                    {
+                        'product': self.product_a.id,
+                        'quantity': 2,
+                        'unit_price': '90.00',
+                    }
+                ],
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(str(response.data['total']), '180.00')
+
+    def test_sale_fails_when_stock_is_insufficient_and_does_not_create_partial_sale(self):
+        response = self.client.post(
+            '/api/sales/',
+            {
+                'items': [
+                    {'product': self.product_a.id, 'quantity': 2},
+                    {'product': self.product_b.id, 'quantity': 50},
+                ],
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(Sale.objects.count(), 0)
+        self.assertEqual(SaleItem.objects.count(), 0)
+
+        self.product_a.refresh_from_db()
+        self.product_b.refresh_from_db()
+        self.assertEqual(self.product_a.quantity, 10)
+        self.assertEqual(self.product_b.quantity, 20)
+
+    def test_sale_rejects_duplicate_product_items(self):
+        response = self.client.post(
+            '/api/sales/',
+            {
+                'items': [
+                    {'product': self.product_a.id, 'quantity': 1},
+                    {'product': self.product_a.id, 'quantity': 2},
+                ],
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(Sale.objects.count(), 0)
+
+    def test_sale_requires_at_least_one_item(self):
+        response = self.client.post(
+            '/api/sales/',
+            {'customer_name': 'Cliente', 'items': []},
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
