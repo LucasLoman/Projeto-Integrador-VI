@@ -67,9 +67,29 @@ class StockMovementViewSet(viewsets.ModelViewSet):
 
 
 class SaleViewSet(viewsets.ModelViewSet):
-    queryset = Sale.objects.prefetch_related('items__product').all().order_by('-created_at')
+    queryset = (
+        Sale.objects.select_related('created_by')
+        .prefetch_related('items__product')
+        .all()
+        .order_by('-created_at')
+    )
     serializer_class = SaleSerializer
     http_method_names = ['get', 'post', 'head', 'options']
+    filter_backends = [filters.SearchFilter]
+    search_fields = [
+        'customer_name',
+        'items__product__sku',
+        'items__product__name',
+    ]
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        customer = self.request.query_params.get('customer')
+
+        if customer:
+            queryset = queryset.filter(customer_name__icontains=customer)
+
+        return queryset.distinct()
 
 
 @api_view(['GET'])

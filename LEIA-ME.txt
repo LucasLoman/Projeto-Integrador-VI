@@ -1,44 +1,39 @@
-FEATURE: MOVIMENTAÇÃO DE ESTOQUE
+FEATURE: REGISTRO DE VENDAS
 
 Branch sugerida:
-feature/movimentacao-estoque
+feature/registro-vendas
 
 Source:
 develop
 
 O que esta etapa implementa:
-- Entrada de produtos no estoque.
-- Saída manual de produtos.
-- Ajuste de inventário.
-- Atualização automática do saldo do produto.
-- Bloqueio de saída maior que o estoque disponível.
-- Registro do usuário responsável pela movimentação.
-- Custo unitário opcional nas entradas.
-- Campo de observação.
-- Histórico de movimentações.
-- Pesquisa por SKU, produto ou observação.
-- Filtro por tipo de movimentação.
-- Testes de entrada, saída, ajuste e estoque insuficiente.
-
-IMPORTANTE SOBRE "AJUSTE":
-Ao selecionar "Ajuste de estoque", a quantidade digitada representa o NOVO SALDO.
-Exemplo:
-Estoque atual = 10
-Ajuste informado = 8
-Novo estoque = 8
+- Registro de vendas com um ou vários produtos.
+- Cliente opcional.
+- Preço de venda preenchido automaticamente.
+- Possibilidade de ajustar o preço unitário na venda.
+- Cálculo automático de subtotal e total.
+- Validação de estoque antes de concluir a venda.
+- Bloqueio de produtos duplicados na mesma venda.
+- Baixa automática do estoque.
+- Geração automática de movimentação de saída vinculada à venda.
+- Histórico de vendas.
+- Visualização dos itens de cada venda.
+- Pesquisa por número da venda, cliente, SKU ou produto.
+- Testes para venda, total, baixa de estoque e estoque insuficiente.
+- Transação atômica: se um item não puder ser vendido, a venda inteira é cancelada.
 
 COMO APLICAR:
 1. No GitHub Desktop, vá para develop.
 2. Faça Fetch/Pull origin.
 3. Crie:
-   feature/movimentacao-estoque
+   feature/registro-vendas
    Source: develop
 4. Extraia este ZIP.
 5. Copie as pastas backend e frontend para a raiz do AutoStock.
-6. Mescle/substitua os arquivos quando solicitado.
+6. Mescle/substitua os arquivos existentes.
 7. Confira as alterações no GitHub Desktop.
 8. Commit:
-   feat: implementa movimentacao de estoque
+   feat: implementa registro de vendas
 9. Push origin.
 10. Abra Pull Request para develop.
 11. Faça o merge e apague a branch.
@@ -47,7 +42,7 @@ Arquivos desta branch:
 - backend/inventory/serializers.py
 - backend/inventory/views.py
 - backend/inventory/tests.py
-- frontend/src/pages/Movements.tsx
+- frontend/src/pages/Sales.tsx
 
-Não é necessária nova migration nesta etapa porque o modelo StockMovement
-já faz parte da estrutura inicial do AutoStock.
+Não é necessária nova migration nesta etapa porque os modelos Sale e SaleItem
+já fazem parte da estrutura inicial do projeto.

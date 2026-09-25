@@ -139,55 +139,117 @@ class StockMovementSerializer(serializers.ModelSerializer):
 class SaleItemInputSerializer(serializers.Serializer):
     product = serializers.PrimaryKeyRelatedField(queryset=Product.objects.filter(active=True))
     quantity = serializers.IntegerField(min_value=1)
-    unit_price = serializers.DecimalField(max_digits=12, decimal_places=2, required=False)
+    unit_price = serializers.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        required=False,
+        min_value=0,
+    )
 
 
 class SaleSerializer(serializers.ModelSerializer):
     items = SaleItemInputSerializer(many=True, write_only=True)
     items_detail = serializers.SerializerMethodField(read_only=True)
+    created_by_name = serializers.CharField(source='created_by.username', read_only=True)
 
     class Meta:
         model = Sale
-        fields = ['id', 'customer_name', 'total', 'created_at', 'items', 'items_detail']
-        read_only_fields = ['total', 'created_at']
+        fields = [
+            'id',
+            'customer_name',
+            'total',
+            'created_at',
+            'created_by_name',
+            'items',
+            'items_detail',
+        ]
+        read_only_fields = ['total', 'created_at', 'created_by_name']
 
     def get_items_detail(self, obj):
         return [
             {
-                'product': i.product_id,
-                'product_name': i.product.name,
-                'quantity': i.quantity,
-                'unit_price': i.unit_price,
-                'subtotal': i.subtotal,
+                'product': item.product_id,
+                'product_sku': item.product.sku,
+                'product_name': item.product.name,
+                'quantity': item.quantity,
+                'unit_price': item.unit_price,
+                'subtotal': item.subtotal,
             }
-            for i in obj.items.all()
+            for item in obj.items.all()
         ]
+
+    def validate_items(self, items):
+        if not items:
+            raise serializers.ValidationError('Adicione pelo menos um produto à venda.')
+
+        seen = set()
+        for item in items:
+            product_id = item['product'].id
+            if product_id in seen:
+                raise serializers.ValidationError(
+                    'O mesmo produto foi adicionado mais de uma vez. Ajuste a quantidade em um único item.'
+                )
+            seen.add(product_id)
+
+        return items
 
     @transaction.atomic
     def create(self, validated_data):
         items = validated_data.pop('items')
-        sale = Sale.objects.create(created_by=self.context['request'].user, **validated_data)
-        total = 0
+        request = self.context['request']
+
+        # Primeiro bloqueia e valida todos os produtos para evitar venda parcial.
+        locked_products = {}
         for item in items:
             product = Product.objects.select_for_update().get(pk=item['product'].pk)
-            qty = item['quantity']
-            if product.quantity < qty:
-                raise serializers.ValidationError({'items': f'Estoque insuficiente para {product.name}'})
-            price = item.get('unit_price') or product.sale_price
-            SaleItem.objects.create(
+            if not product.active:
+                raise serializers.ValidationError(
+                    {'items': f'O produto {product.name} está inativo.'}
+                )
+
+            quantity = item['quantity']
+            if product.quantity < quantity:
+                raise serializers.ValidationError(
+                    {
+                        'items': (
+                            f'Estoque insuficiente para {product.name}. '
+                            f'Disponível: {product.quantity}.'
+                        )
+                    }
+                )
+            locked_products[product.id] = product
+
+        sale = Sale.objects.create(
+            created_by=request.user,
+            customer_name=validated_data.get('customer_name', '').strip(),
+        )
+
+        total = 0
+        for item in items:
+            product = locked_products[item['product'].id]
+            quantity = item['quantity']
+            unit_price = item.get('unit_price')
+            if unit_price is None:
+                unit_price = product.sale_price
+
+            sale_item = SaleItem.objects.create(
                 sale=sale,
                 product=product,
-                quantity=qty,
-                unit_price=price,
+                quantity=quantity,
+                unit_price=unit_price,
             )
+
+            # StockMovement faz a baixa automática no saldo do produto.
             StockMovement.objects.create(
                 product=product,
                 movement_type=StockMovement.OUT,
-                quantity=qty,
+                quantity=quantity,
                 note=f'Venda #{sale.id}',
-                created_by=self.context['request'].user,
+                created_by=request.user,
             )
-            total += qty * price
+
+            total += sale_item.subtotal
+
         sale.total = total
         sale.save(update_fields=['total'])
         return sale
