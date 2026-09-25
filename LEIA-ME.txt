@@ -1,53 +1,53 @@
-FEATURE: CURVA ABC
+FEATURE: PRODUTOS PARADOS
 
 Branch sugerida:
-feature/curva-abc
+feature/produtos-parados
 
 Source:
 develop
 
 O que esta etapa implementa:
-- Curva ABC baseada no faturamento dos produtos.
-- Classificação em A, B e C.
-- Participação percentual de cada produto.
-- Percentual acumulado.
-- Quantidade vendida por produto.
-- Ordenação pelo faturamento.
-- Escolha do período:
-  * 30 dias
+- Identificação de produtos com estoque e sem venda por determinado período.
+- Períodos disponíveis:
+  * 60 dias
   * 90 dias
   * 180 dias
   * 365 dias
-- Cards com quantidade de itens e faturamento por classe.
-- Gráfico dos principais produtos.
-- Tabela detalhada da Curva ABC.
-- Testes da API para ordenação, percentuais, classes e período.
+- Exibe a última venda do produto.
+- Identifica produtos que nunca foram vendidos.
+- Calcula há quantos dias o produto está sem venda.
+- Calcula o valor financeiro imobilizado em cada produto:
+  quantidade em estoque x preço de custo.
+- Calcula o capital total imobilizado em produtos parados.
+- Não considera produtos com estoque zerado.
+- Produtos recém-cadastrados e nunca vendidos só são classificados como parados
+  depois de completarem o período selecionado.
+- A análise aparece dentro da tela "Análises".
+- Testes automatizados da API.
 
-REGRA UTILIZADA:
-- Classe A: produtos que compõem aproximadamente os primeiros 80% do faturamento.
-- Classe B: faixa seguinte até aproximadamente 95%.
-- Classe C: produtos restantes.
+Nova rota da API:
+GET /api/analytics/slow-products/?days=90
 
 COMO APLICAR:
 1. No GitHub Desktop, vá para develop.
 2. Faça Fetch/Pull origin.
 3. Crie:
-   feature/curva-abc
+   feature/produtos-parados
    Source: develop
 4. Extraia este ZIP.
 5. Copie as pastas backend e frontend para a raiz do AutoStock.
 6. Mescle/substitua os arquivos existentes.
 7. Confira as alterações no GitHub Desktop.
 8. Commit:
-   feat: implementa analise de curva ABC
+   feat: implementa analise de produtos parados
 9. Push origin.
 10. Abra Pull Request para develop.
 11. Faça o merge e apague a branch.
 
 Arquivos desta branch:
 - backend/inventory/views.py
+- backend/inventory/urls.py
 - backend/inventory/tests.py
 - frontend/src/pages/Analytics.tsx
-- frontend/src/styles.css
 
 Não é necessária nova migration nesta etapa.

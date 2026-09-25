@@ -586,3 +586,127 @@ class ABCAnalysisTests(APITestCase):
         response = self.client.get('/api/analytics/abc/?days=30')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
+class SlowProductsTests(APITestCase):
+    def setUp(self):
+        from datetime import timedelta
+        from django.utils import timezone
+
+        self.user = User.objects.create_user(username='parados_teste', password='teste123')
+        self.client.force_authenticate(self.user)
+
+        self.old_unsold = Product.objects.create(
+            sku='PAR001',
+            name='Produto Parado',
+            quantity=8,
+            min_stock=1,
+            cost_price='25.00',
+            sale_price='50.00',
+        )
+        Product.objects.filter(pk=self.old_unsold.pk).update(
+            created_at=timezone.now() - timedelta(days=150)
+        )
+        self.old_unsold.refresh_from_db()
+
+        self.recently_sold = Product.objects.create(
+            sku='PAR002',
+            name='Produto Vendido Recentemente',
+            quantity=5,
+            min_stock=1,
+            cost_price='30.00',
+            sale_price='60.00',
+        )
+
+        recent_sale = Sale.objects.create(
+            customer_name='Cliente recente',
+            total='60.00',
+            created_by=self.user,
+        )
+        SaleItem.objects.create(
+            sale=recent_sale,
+            product=self.recently_sold,
+            quantity=1,
+            unit_price='60.00',
+        )
+
+        self.old_sold = Product.objects.create(
+            sku='PAR003',
+            name='Produto Sem Venda Há Muito Tempo',
+            quantity=4,
+            min_stock=1,
+            cost_price='10.00',
+            sale_price='20.00',
+        )
+
+        old_sale = Sale.objects.create(
+            customer_name='Cliente antigo',
+            total='20.00',
+            created_by=self.user,
+        )
+        Sale.objects.filter(pk=old_sale.pk).update(
+            created_at=timezone.now() - timedelta(days=130)
+        )
+        old_sale.refresh_from_db()
+        SaleItem.objects.create(
+            sale=old_sale,
+            product=self.old_sold,
+            quantity=1,
+            unit_price='20.00',
+        )
+
+        self.new_unsold = Product.objects.create(
+            sku='PAR004',
+            name='Produto Novo Sem Venda',
+            quantity=6,
+            min_stock=1,
+            cost_price='15.00',
+            sale_price='30.00',
+        )
+
+        self.zero_stock = Product.objects.create(
+            sku='PAR005',
+            name='Produto Zerado',
+            quantity=0,
+            min_stock=1,
+            cost_price='100.00',
+            sale_price='150.00',
+        )
+        Product.objects.filter(pk=self.zero_stock.pk).update(
+            created_at=timezone.now() - timedelta(days=200)
+        )
+
+    def test_slow_products_returns_items_without_sales_in_period(self):
+        response = self.client.get('/api/analytics/slow-products/?days=90')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        skus = {item['sku'] for item in response.data['items']}
+
+        self.assertIn('PAR001', skus)
+        self.assertIn('PAR003', skus)
+        self.assertNotIn('PAR002', skus)
+        self.assertNotIn('PAR004', skus)
+        self.assertNotIn('PAR005', skus)
+
+    def test_slow_products_calculates_inventory_value(self):
+        response = self.client.get('/api/analytics/slow-products/?days=90')
+        items = {item['sku']: item for item in response.data['items']}
+
+        self.assertEqual(str(items['PAR001']['inventory_value']), '200.00')
+        self.assertEqual(str(items['PAR003']['inventory_value']), '40.00')
+        self.assertEqual(str(response.data['inventory_value']), '240.00')
+
+    def test_never_sold_product_is_flagged(self):
+        response = self.client.get('/api/analytics/slow-products/?days=90')
+        items = {item['sku']: item for item in response.data['items']}
+
+        self.assertTrue(items['PAR001']['never_sold'])
+        self.assertFalse(items['PAR003']['never_sold'])
+
+    def test_period_can_be_changed(self):
+        response = self.client.get('/api/analytics/slow-products/?days=180')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        skus = {item['sku'] for item in response.data['items']}
+
+        self.assertNotIn('PAR001', skus)
+        self.assertNotIn('PAR003', skus)
+

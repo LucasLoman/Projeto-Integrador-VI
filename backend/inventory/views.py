@@ -1,6 +1,6 @@
 from datetime import timedelta
 from decimal import Decimal
-from django.db.models import Sum, F, DecimalField, ExpressionWrapper
+from django.db.models import Sum, F, Max, DecimalField, ExpressionWrapper
 from django.utils import timezone
 from rest_framework import viewsets, permissions, filters
 from rest_framework.decorators import api_view, permission_classes
@@ -247,6 +247,99 @@ def abc_analysis(request):
         )
 
     return Response(result)
+
+
+@api_view(['GET'])
+@permission_classes([permissions.IsAuthenticated])
+def slow_products(request):
+    """
+    Lista produtos considerados parados:
+    - produto ativo;
+    - possui saldo em estoque;
+    - não teve venda dentro do período escolhido;
+    - para produtos nunca vendidos, considera a data de cadastro.
+    """
+    try:
+        days = int(request.query_params.get('days', 90))
+    except (TypeError, ValueError):
+        days = 90
+
+    days = max(1, min(days, 3650))
+    now = timezone.now()
+    since = now - timedelta(days=days)
+
+    # Produtos vendidos dentro do período não são considerados parados.
+    recently_sold_ids = SaleItem.objects.filter(
+        sale__created_at__gte=since
+    ).values_list('product_id', flat=True)
+
+    # Última venda histórica de cada produto.
+    last_sales = (
+        SaleItem.objects.values('product_id')
+        .annotate(last_sale=Max('sale__created_at'))
+    )
+    last_sale_map = {
+        row['product_id']: row['last_sale']
+        for row in last_sales
+    }
+
+    products = (
+        Product.objects.filter(active=True, quantity__gt=0)
+        .exclude(id__in=recently_sold_ids)
+        .select_related('category', 'brand', 'supplier')
+        .order_by('name')
+    )
+
+    result = []
+    total_inventory_value = Decimal('0')
+
+    for product in products:
+        last_sale = last_sale_map.get(product.id)
+
+        # Se nunca vendeu, só classifica como parado quando já está cadastrado
+        # há pelo menos o período selecionado.
+        reference_date = last_sale or product.created_at
+        if reference_date > since:
+            continue
+
+        days_without_sale = max((now - reference_date).days, 0)
+        inventory_value = Decimal(product.cost_price) * product.quantity
+        total_inventory_value += inventory_value
+
+        result.append(
+            {
+                'product_id': product.id,
+                'sku': product.sku,
+                'name': product.name,
+                'category': product.category.name if product.category else None,
+                'brand': product.brand.name if product.brand else None,
+                'supplier': product.supplier.name if product.supplier else None,
+                'quantity': product.quantity,
+                'cost_price': product.cost_price,
+                'inventory_value': inventory_value,
+                'last_sale': last_sale,
+                'never_sold': last_sale is None,
+                'days_without_sale': days_without_sale,
+                'location': product.location,
+            }
+        )
+
+    result.sort(
+        key=lambda item: (
+            -item['days_without_sale'],
+            -float(item['inventory_value']),
+            item['name'].lower(),
+        )
+    )
+
+    return Response(
+        {
+            'period_days': days,
+            'count': len(result),
+            'inventory_value': total_inventory_value,
+            'items': result,
+        }
+    )
 
 
 @api_view(['GET'])
