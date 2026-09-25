@@ -21,16 +21,40 @@ type ABCItem = {
   class: 'A' | 'B' | 'C'
 }
 
+type ReplenishmentRisk = 'RUPTURA' | 'REPOR' | 'ATENCAO' | 'OK' | 'SEM_GIRO'
+
 type ReplenishmentItem = {
   product_id: number
   sku: string
   name: string
+  supplier?: string | null
   quantity: number
+  min_stock: number
+  sold_qty: number
   avg_daily: number
   lead_time_days: number
+  safety_days: number
+  safety_stock: number
+  reorder_point: number
+  target_days: number
+  target_stock: number
   coverage_days: number | null
-  risk: string
+  risk: ReplenishmentRisk
   suggested_purchase: number
+  cost_price: string
+  estimated_purchase_cost: string
+}
+
+type ReplenishmentResponse = {
+  analysis_days: number
+  safety_days: number
+  target_days: number
+  summary: {
+    products_to_buy: number
+    total_units: number
+    estimated_cost: string
+  }
+  items: ReplenishmentItem[]
 }
 
 
@@ -91,7 +115,20 @@ const money = (value: string | number) =>
 
 export default function Analytics() {
   const [abc, setAbc] = useState<ABCItem[]>([])
-  const [replenishment, setReplenishment] = useState<ReplenishmentItem[]>([])
+  const [replenishment, setReplenishment] = useState<ReplenishmentResponse>({
+    analysis_days: 30,
+    safety_days: 3,
+    target_days: 15,
+    summary: {
+      products_to_buy: 0,
+      total_units: 0,
+      estimated_cost: '0',
+    },
+    items: [],
+  })
+  const [replenishmentDays, setReplenishmentDays] = useState(30)
+  const [replenishmentTargetDays, setReplenishmentTargetDays] = useState(15)
+  const [replenishmentLoading, setReplenishmentLoading] = useState(false)
   const [slowProducts, setSlowProducts] = useState<SlowProductsResponse>({
     period_days: 90,
     count: 0,
@@ -131,12 +168,20 @@ export default function Analytics() {
     }
   }
 
-  async function loadReplenishment() {
+  async function loadReplenishment(
+    period = replenishmentDays,
+    target = replenishmentTargetDays,
+  ) {
+    setReplenishmentLoading(true)
     try {
-      const response = await api.get('/analytics/replenishment/')
+      const response = await api.get(
+        `/analytics/replenishment/?days=${period}&safety_days=3&target_days=${target}`,
+      )
       setReplenishment(response.data)
     } catch {
-      // A reposição terá uma etapa própria posteriormente.
+      setError('Não foi possível calcular a sugestão de reposição.')
+    } finally {
+      setReplenishmentLoading(false)
     }
   }
 
@@ -170,7 +215,7 @@ export default function Analytics() {
     loadABC(days)
     loadSlowProducts(slowDays)
     loadRuptureForecast(ruptureDays)
-    loadReplenishment()
+    loadReplenishment(replenishmentDays, replenishmentTargetDays)
   }, [])
 
   const summary = useMemo(() => {
@@ -229,6 +274,27 @@ export default function Analytics() {
       SEM_HISTORICO: 'Sem histórico',
     }
     return labels[risk]
+  }
+
+  function replenishmentRiskLabel(risk: ReplenishmentRisk) {
+    const labels: Record<ReplenishmentRisk, string> = {
+      RUPTURA: 'Sem estoque',
+      REPOR: 'Comprar',
+      ATENCAO: 'Atenção',
+      OK: 'Normal',
+      SEM_GIRO: 'Sem giro',
+    }
+    return labels[risk]
+  }
+
+  function changeReplenishmentPeriod(value: number) {
+    setReplenishmentDays(value)
+    loadReplenishment(value, replenishmentTargetDays)
+  }
+
+  function changeTargetDays(value: number) {
+    setReplenishmentTargetDays(value)
+    loadReplenishment(replenishmentDays, value)
   }
 
   return (
@@ -558,36 +624,112 @@ export default function Analytics() {
       </section>
 
       <section>
-        <h3>Sugestão de reposição</h3>
+        <div className="page-header">
+          <div>
+            <h3>Sugestão de reposição</h3>
+            <p className="muted">
+              Recomendação automática de quais produtos comprar e em qual quantidade,
+              considerando consumo, prazo do fornecedor e estoque de segurança.
+            </p>
+          </div>
+        </div>
+
+        <div className="replenishment-controls">
+          <label>
+            Histórico de consumo
+            <select
+              value={replenishmentDays}
+              onChange={(e) => changeReplenishmentPeriod(Number(e.target.value))}
+            >
+              <option value={30}>30 dias</option>
+              <option value={60}>60 dias</option>
+              <option value={90}>90 dias</option>
+            </select>
+          </label>
+
+          <label>
+            Estoque alvo após reposição
+            <select
+              value={replenishmentTargetDays}
+              onChange={(e) => changeTargetDays(Number(e.target.value))}
+            >
+              <option value={7}>7 dias adicionais</option>
+              <option value={15}>15 dias adicionais</option>
+              <option value={30}>30 dias adicionais</option>
+            </select>
+          </label>
+        </div>
+
+        <div className="abc-summary">
+          <div className="card">
+            <span className="muted">Produtos para comprar</span>
+            <strong>{replenishment.summary.products_to_buy}</strong>
+          </div>
+
+          <div className="card">
+            <span className="muted">Unidades sugeridas</span>
+            <strong>{replenishment.summary.total_units}</strong>
+          </div>
+
+          <div className="card">
+            <span className="muted">Custo estimado da compra</span>
+            <strong>{money(replenishment.summary.estimated_cost)}</strong>
+          </div>
+        </div>
+
         <p className="muted">
-          Este módulo será aprofundado nas próximas etapas do projeto.
+          O sistema calcula um ponto de reposição utilizando o consumo durante o prazo
+          médio do fornecedor mais um estoque de segurança. A compra só é sugerida quando
+          o saldo atual chega a esse ponto. Produtos sem giro não recebem compra automática.
         </p>
 
         <div className="table-wrap">
           <table>
             <thead>
               <tr>
+                <th>Status</th>
                 <th>SKU</th>
                 <th>Produto</th>
-                <th>Estoque</th>
+                <th>Atual</th>
                 <th>Média/dia</th>
-                <th>Cobertura</th>
-                <th>Risco</th>
+                <th>Ponto de reposição</th>
+                <th>Estoque alvo</th>
                 <th>Comprar</th>
+                <th>Custo estimado</th>
+                <th>Fornecedor</th>
               </tr>
             </thead>
             <tbody>
-              {replenishment.slice(0, 10).map((item) => (
-                <tr key={item.product_id}>
-                  <td>{item.sku}</td>
-                  <td>{item.name}</td>
-                  <td>{item.quantity}</td>
-                  <td>{item.avg_daily}</td>
-                  <td>{item.coverage_days ?? '-'}</td>
-                  <td>{item.risk}</td>
-                  <td><strong>{item.suggested_purchase}</strong></td>
-                </tr>
-              ))}
+              {replenishmentLoading ? (
+                <tr><td colSpan={10}>Calculando sugestão de compra...</td></tr>
+              ) : replenishment.items.length === 0 ? (
+                <tr><td colSpan={10}>Nenhum produto disponível para análise.</td></tr>
+              ) : (
+                replenishment.items.map((item) => (
+                  <tr key={item.product_id}>
+                    <td><strong>{replenishmentRiskLabel(item.risk)}</strong></td>
+                    <td>{item.sku}</td>
+                    <td>{item.name}</td>
+                    <td>{item.quantity}</td>
+                    <td>{item.avg_daily.toFixed(2)}</td>
+                    <td>{item.reorder_point}</td>
+                    <td>{item.target_stock}</td>
+                    <td>
+                      <strong>
+                        {item.suggested_purchase > 0
+                          ? `${item.suggested_purchase} un.`
+                          : '-'}
+                      </strong>
+                    </td>
+                    <td>
+                      {item.suggested_purchase > 0
+                        ? money(item.estimated_purchase_cost)
+                        : '-'}
+                    </td>
+                    <td>{item.supplier || 'Sem fornecedor'}</td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

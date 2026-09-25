@@ -825,3 +825,120 @@ class RuptureForecastTests(APITestCase):
         self.assertEqual(response.data['summary']['OK'], 1)
         self.assertEqual(response.data['summary']['SEM_HISTORICO'], 1)
 
+class ReplenishmentTests(APITestCase):
+    def setUp(self):
+        from .models import Supplier
+
+        self.user = User.objects.create_user(
+            username='reposicao_teste',
+            password='teste123',
+        )
+        self.client.force_authenticate(self.user)
+
+        self.supplier = Supplier.objects.create(
+            name='Fornecedor Reposição',
+            lead_time_days=7,
+        )
+
+        self.to_buy = Product.objects.create(
+            sku='REP001',
+            name='Produto para Repor',
+            supplier=self.supplier,
+            quantity=8,
+            min_stock=3,
+            cost_price='20.00',
+            sale_price='50.00',
+        )
+
+        self.safe = Product.objects.create(
+            sku='REP002',
+            name='Produto com Estoque Seguro',
+            supplier=self.supplier,
+            quantity=100,
+            min_stock=3,
+            cost_price='10.00',
+            sale_price='30.00',
+        )
+
+        self.no_turnover = Product.objects.create(
+            sku='REP003',
+            name='Produto Sem Giro',
+            supplier=self.supplier,
+            quantity=2,
+            min_stock=5,
+            cost_price='15.00',
+            sale_price='25.00',
+        )
+
+        sale = Sale.objects.create(
+            customer_name='Cliente Reposição',
+            total='0.00',
+            created_by=self.user,
+        )
+
+        SaleItem.objects.create(
+            sale=sale,
+            product=self.to_buy,
+            quantity=60,
+            unit_price='50.00',
+        )
+
+        SaleItem.objects.create(
+            sale=sale,
+            product=self.safe,
+            quantity=30,
+            unit_price='30.00',
+        )
+
+    def test_replenishment_calculates_reorder_point(self):
+        response = self.client.get(
+            '/api/analytics/replenishment/?days=30&safety_days=3&target_days=15'
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        items = {item['sku']: item for item in response.data['items']}
+        item = items['REP001']
+
+        self.assertEqual(item['avg_daily'], 2.0)
+        self.assertEqual(item['safety_stock'], 6)
+        self.assertEqual(item['reorder_point'], 20)
+
+    def test_replenishment_suggests_quantity_up_to_target_stock(self):
+        response = self.client.get(
+            '/api/analytics/replenishment/?days=30&safety_days=3&target_days=15'
+        )
+        items = {item['sku']: item for item in response.data['items']}
+        item = items['REP001']
+
+        self.assertEqual(item['target_stock'], 50)
+        self.assertEqual(item['suggested_purchase'], 42)
+        self.assertEqual(str(item['estimated_purchase_cost']), '840.00')
+
+    def test_safe_stock_does_not_generate_purchase(self):
+        response = self.client.get(
+            '/api/analytics/replenishment/?days=30&safety_days=3&target_days=15'
+        )
+        items = {item['sku']: item for item in response.data['items']}
+
+        self.assertEqual(items['REP002']['suggested_purchase'], 0)
+        self.assertEqual(items['REP002']['risk'], 'OK')
+
+    def test_product_without_turnover_is_not_replenished_automatically(self):
+        response = self.client.get(
+            '/api/analytics/replenishment/?days=30&safety_days=3&target_days=15'
+        )
+        items = {item['sku']: item for item in response.data['items']}
+
+        self.assertEqual(items['REP003']['risk'], 'SEM_GIRO')
+        self.assertEqual(items['REP003']['suggested_purchase'], 0)
+
+    def test_replenishment_returns_purchase_summary(self):
+        response = self.client.get(
+            '/api/analytics/replenishment/?days=30&safety_days=3&target_days=15'
+        )
+        summary = response.data['summary']
+
+        self.assertEqual(summary['products_to_buy'], 1)
+        self.assertEqual(summary['total_units'], 42)
+        self.assertEqual(str(summary['estimated_cost']), '840.00')
+
