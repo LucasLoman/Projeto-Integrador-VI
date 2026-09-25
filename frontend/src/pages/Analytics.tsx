@@ -33,6 +33,30 @@ type ReplenishmentItem = {
   suggested_purchase: number
 }
 
+
+type SlowProduct = {
+  product_id: number
+  sku: string
+  name: string
+  category?: string | null
+  brand?: string | null
+  supplier?: string | null
+  quantity: number
+  cost_price: string
+  inventory_value: string
+  last_sale?: string | null
+  never_sold: boolean
+  days_without_sale: number
+  location?: string
+}
+
+type SlowProductsResponse = {
+  period_days: number
+  count: number
+  inventory_value: string
+  items: SlowProduct[]
+}
+
 const money = (value: string | number) =>
   Number(value || 0).toLocaleString('pt-BR', {
     style: 'currency',
@@ -42,8 +66,16 @@ const money = (value: string | number) =>
 export default function Analytics() {
   const [abc, setAbc] = useState<ABCItem[]>([])
   const [replenishment, setReplenishment] = useState<ReplenishmentItem[]>([])
+  const [slowProducts, setSlowProducts] = useState<SlowProductsResponse>({
+    period_days: 90,
+    count: 0,
+    inventory_value: '0',
+    items: [],
+  })
   const [days, setDays] = useState(90)
+  const [slowDays, setSlowDays] = useState(90)
   const [loading, setLoading] = useState(false)
+  const [slowLoading, setSlowLoading] = useState(false)
   const [error, setError] = useState('')
 
   async function loadABC(period = days) {
@@ -68,8 +100,21 @@ export default function Analytics() {
     }
   }
 
+  async function loadSlowProducts(period = slowDays) {
+    setSlowLoading(true)
+    try {
+      const response = await api.get(`/analytics/slow-products/?days=${period}`)
+      setSlowProducts(response.data)
+    } catch {
+      setError('Não foi possível carregar os produtos parados.')
+    } finally {
+      setSlowLoading(false)
+    }
+  }
+
   useEffect(() => {
     loadABC(days)
+    loadSlowProducts(slowDays)
     loadReplenishment()
   }, [])
 
@@ -108,6 +153,11 @@ export default function Analytics() {
   function changePeriod(value: number) {
     setDays(value)
     loadABC(value)
+  }
+
+  function changeSlowPeriod(value: number) {
+    setSlowDays(value)
+    loadSlowProducts(value)
   }
 
   return (
@@ -224,6 +274,102 @@ export default function Analytics() {
                         {item.class}
                       </span>
                     </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <div className="page-header">
+          <div>
+            <h3>Produtos parados</h3>
+            <p className="muted">
+              Itens com saldo em estoque e sem venda durante o período selecionado.
+            </p>
+          </div>
+
+          <select
+            value={slowDays}
+            onChange={(e) => changeSlowPeriod(Number(e.target.value))}
+          >
+            <option value={60}>Sem venda há 60 dias</option>
+            <option value={90}>Sem venda há 90 dias</option>
+            <option value={180}>Sem venda há 180 dias</option>
+            <option value={365}>Sem venda há 12 meses</option>
+          </select>
+        </div>
+
+        <div className="abc-summary">
+          <div className="card">
+            <span className="muted">Produtos parados</span>
+            <strong>{slowProducts.count}</strong>
+          </div>
+
+          <div className="card">
+            <span className="muted">Capital imobilizado</span>
+            <strong>{money(slowProducts.inventory_value)}</strong>
+          </div>
+
+          <div className="card">
+            <span className="muted">Período analisado</span>
+            <strong>{slowProducts.period_days} dias</strong>
+          </div>
+        </div>
+
+        <p className="muted">
+          Produtos recém-cadastrados só entram nesta relação depois de completarem
+          o período escolhido sem nenhuma venda. Produtos sem saldo não são considerados.
+        </p>
+
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>SKU</th>
+                <th>Produto</th>
+                <th>Estoque</th>
+                <th>Dias sem venda</th>
+                <th>Última venda</th>
+                <th>Custo</th>
+                <th>Valor parado</th>
+                <th>Fornecedor</th>
+              </tr>
+            </thead>
+            <tbody>
+              {slowLoading ? (
+                <tr><td colSpan={8}>Analisando produtos parados...</td></tr>
+              ) : slowProducts.items.length === 0 ? (
+                <tr>
+                  <td colSpan={8}>
+                    Nenhum produto parado para o período selecionado.
+                  </td>
+                </tr>
+              ) : (
+                slowProducts.items.map((item) => (
+                  <tr key={item.product_id}>
+                    <td>{item.sku}</td>
+                    <td>
+                      {item.name}
+                      {item.never_sold && (
+                        <>
+                          <br />
+                          <small className="muted">Nunca vendido</small>
+                        </>
+                      )}
+                    </td>
+                    <td>{item.quantity}</td>
+                    <td><strong>{item.days_without_sale}</strong></td>
+                    <td>
+                      {item.last_sale
+                        ? new Date(item.last_sale).toLocaleDateString('pt-BR')
+                        : 'Nunca'}
+                    </td>
+                    <td>{money(item.cost_price)}</td>
+                    <td><strong>{money(item.inventory_value)}</strong></td>
+                    <td>{item.supplier || '-'}</td>
                   </tr>
                 ))
               )}
