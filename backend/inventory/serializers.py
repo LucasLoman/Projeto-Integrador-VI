@@ -72,11 +72,23 @@ class ProductSerializer(serializers.ModelSerializer):
     category_name = serializers.CharField(source='category.name', read_only=True)
     brand_name = serializers.CharField(source='brand.name', read_only=True)
     supplier_name = serializers.CharField(source='supplier.name', read_only=True)
+    stock_status = serializers.SerializerMethodField(read_only=True)
+    stock_difference = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = Product
         fields = '__all__'
         read_only_fields = ['quantity', 'created_at', 'updated_at']
+
+    def get_stock_status(self, obj):
+        if obj.quantity <= 0:
+            return 'SEM_ESTOQUE'
+        if obj.quantity <= obj.min_stock:
+            return 'ESTOQUE_BAIXO'
+        return 'OK'
+
+    def get_stock_difference(self, obj):
+        return max(obj.min_stock - obj.quantity, 0)
 
     def validate_sku(self, value):
         return value.strip().upper()

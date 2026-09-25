@@ -43,6 +43,23 @@ class ProductViewSet(viewsets.ModelViewSet):
     filter_backends = [filters.SearchFilter]
     search_fields = ['sku', 'name', 'category__name', 'brand__name', 'supplier__name', 'location']
 
+    def get_queryset(self):
+        queryset = super().get_queryset()
+
+        low_stock = self.request.query_params.get('low_stock')
+        active = self.request.query_params.get('active')
+
+        if low_stock and low_stock.lower() in {'1', 'true', 'sim', 'yes'}:
+            queryset = queryset.filter(quantity__lte=F('min_stock'))
+
+        if active is not None:
+            if active.lower() in {'1', 'true', 'sim', 'yes'}:
+                queryset = queryset.filter(active=True)
+            elif active.lower() in {'0', 'false', 'nao', 'não', 'no'}:
+                queryset = queryset.filter(active=False)
+
+        return queryset
+
 
 class StockMovementViewSet(viewsets.ModelViewSet):
     queryset = StockMovement.objects.select_related('product', 'created_by').all().order_by('-created_at')

@@ -394,3 +394,56 @@ class SaleTests(APITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
+class MinimumStockTests(APITestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='estoque_minimo_teste', password='teste123')
+        self.client.force_authenticate(self.user)
+
+        self.low = Product.objects.create(
+            sku='LOW001',
+            name='Produto Baixo',
+            quantity=3,
+            min_stock=5,
+            sale_price='10.00',
+        )
+        self.zero = Product.objects.create(
+            sku='ZERO001',
+            name='Produto Zerado',
+            quantity=0,
+            min_stock=2,
+            sale_price='20.00',
+        )
+        self.ok = Product.objects.create(
+            sku='OK001',
+            name='Produto OK',
+            quantity=10,
+            min_stock=4,
+            sale_price='30.00',
+        )
+
+    def test_filter_low_stock_products(self):
+        response = self.client.get('/api/products/?low_stock=true')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        skus = {item['sku'] for item in response.data}
+        self.assertIn('LOW001', skus)
+        self.assertIn('ZERO001', skus)
+        self.assertNotIn('OK001', skus)
+
+    def test_stock_status_for_low_product(self):
+        response = self.client.get(f'/api/products/{self.low.id}/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['stock_status'], 'ESTOQUE_BAIXO')
+        self.assertEqual(response.data['stock_difference'], 2)
+
+    def test_stock_status_for_zero_product(self):
+        response = self.client.get(f'/api/products/{self.zero.id}/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['stock_status'], 'SEM_ESTOQUE')
+
+    def test_stock_status_for_normal_product(self):
+        response = self.client.get(f'/api/products/{self.ok.id}/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['stock_status'], 'OK')
+        self.assertEqual(response.data['stock_difference'], 0)
+
