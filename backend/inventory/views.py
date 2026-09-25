@@ -344,6 +344,123 @@ def slow_products(request):
 
 @api_view(['GET'])
 @permission_classes([permissions.IsAuthenticated])
+def rupture_forecast(request):
+    """
+    Previsão simples de ruptura baseada no consumo médio diário do período escolhido.
+
+    Fórmula principal:
+        consumo médio diário = quantidade vendida no período / dias analisados
+        cobertura = estoque atual / consumo médio diário
+
+    O prazo do fornecedor é usado para indicar o nível de risco.
+    """
+    try:
+        days = int(request.query_params.get('days', 30))
+    except (TypeError, ValueError):
+        days = 30
+
+    try:
+        safety_days = int(request.query_params.get('safety_days', 3))
+    except (TypeError, ValueError):
+        safety_days = 3
+
+    days = max(7, min(days, 365))
+    safety_days = max(0, min(safety_days, 30))
+
+    now = timezone.now()
+    since = now - timedelta(days=days)
+
+    sales = (
+        SaleItem.objects.filter(sale__created_at__gte=since)
+        .values('product_id')
+        .annotate(qty=Sum('quantity'))
+    )
+    sold_map = {row['product_id']: row['qty'] or 0 for row in sales}
+
+    items = []
+    summary = {
+        'RUPTURA': 0,
+        'CRITICO': 0,
+        'ATENCAO': 0,
+        'OK': 0,
+        'SEM_HISTORICO': 0,
+    }
+
+    products = (
+        Product.objects.filter(active=True)
+        .select_related('supplier')
+        .order_by('name')
+    )
+
+    for product in products:
+        sold_qty = sold_map.get(product.id, 0)
+        avg_daily = sold_qty / days
+        lead_time = product.supplier.lead_time_days if product.supplier else 7
+
+        if avg_daily <= 0:
+            coverage_days = None
+            rupture_date = None
+            risk = 'SEM_HISTORICO'
+        else:
+            coverage_days = product.quantity / avg_daily
+            rupture_date = now + timedelta(days=coverage_days)
+
+            if product.quantity <= 0:
+                risk = 'RUPTURA'
+            elif coverage_days <= lead_time:
+                risk = 'CRITICO'
+            elif coverage_days <= lead_time + safety_days:
+                risk = 'ATENCAO'
+            else:
+                risk = 'OK'
+
+        summary[risk] += 1
+
+        items.append(
+            {
+                'product_id': product.id,
+                'sku': product.sku,
+                'name': product.name,
+                'quantity': product.quantity,
+                'sold_qty': sold_qty,
+                'analysis_days': days,
+                'avg_daily': round(avg_daily, 2),
+                'lead_time_days': lead_time,
+                'safety_days': safety_days,
+                'coverage_days': round(coverage_days, 1) if coverage_days is not None else None,
+                'rupture_date': rupture_date,
+                'risk': risk,
+                'supplier': product.supplier.name if product.supplier else None,
+            }
+        )
+
+    risk_order = {
+        'RUPTURA': 0,
+        'CRITICO': 1,
+        'ATENCAO': 2,
+        'OK': 3,
+        'SEM_HISTORICO': 4,
+    }
+    items.sort(
+        key=lambda item: (
+            risk_order[item['risk']],
+            item['coverage_days'] if item['coverage_days'] is not None else 999999,
+            item['name'].lower(),
+        )
+    )
+
+    return Response(
+        {
+            'analysis_days': days,
+            'safety_days': safety_days,
+            'summary': summary,
+            'items': items,
+        }
+    )
+
+
+@api_view(['GET'])
+@permission_classes([permissions.IsAuthenticated])
 def replenishment(request):
     days = int(request.query_params.get('days', 30))
     since = timezone.now() - timedelta(days=days)

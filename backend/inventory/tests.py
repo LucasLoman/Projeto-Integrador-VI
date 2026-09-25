@@ -710,3 +710,118 @@ class SlowProductsTests(APITestCase):
         self.assertNotIn('PAR001', skus)
         self.assertNotIn('PAR003', skus)
 
+class RuptureForecastTests(APITestCase):
+    def setUp(self):
+        from .models import Supplier
+
+        self.user = User.objects.create_user(username='ruptura_teste', password='teste123')
+        self.client.force_authenticate(self.user)
+
+        supplier = Supplier.objects.create(
+            name='Fornecedor Teste',
+            lead_time_days=7,
+        )
+
+        self.critical = Product.objects.create(
+            sku='RUP001',
+            name='Produto Crítico',
+            supplier=supplier,
+            quantity=10,
+            min_stock=2,
+            sale_price='50.00',
+        )
+
+        self.ok_product = Product.objects.create(
+            sku='RUP002',
+            name='Produto Seguro',
+            supplier=supplier,
+            quantity=30,
+            min_stock=2,
+            sale_price='40.00',
+        )
+
+        self.no_history = Product.objects.create(
+            sku='RUP003',
+            name='Produto Sem Histórico',
+            supplier=supplier,
+            quantity=10,
+            min_stock=2,
+            sale_price='30.00',
+        )
+
+        self.out_of_stock = Product.objects.create(
+            sku='RUP004',
+            name='Produto em Ruptura',
+            supplier=supplier,
+            quantity=0,
+            min_stock=2,
+            sale_price='20.00',
+        )
+
+        sale = Sale.objects.create(
+            customer_name='Cliente Previsão',
+            total='0.00',
+            created_by=self.user,
+        )
+
+        SaleItem.objects.create(
+            sale=sale,
+            product=self.critical,
+            quantity=60,
+            unit_price='50.00',
+        )
+        SaleItem.objects.create(
+            sale=sale,
+            product=self.ok_product,
+            quantity=30,
+            unit_price='40.00',
+        )
+        SaleItem.objects.create(
+            sale=sale,
+            product=self.out_of_stock,
+            quantity=30,
+            unit_price='20.00',
+        )
+
+    def test_forecast_calculates_daily_average_and_coverage(self):
+        response = self.client.get('/api/analytics/rupture-forecast/?days=30')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        items = {item['sku']: item for item in response.data['items']}
+        critical = items['RUP001']
+
+        self.assertEqual(critical['sold_qty'], 60)
+        self.assertEqual(critical['avg_daily'], 2.0)
+        self.assertEqual(critical['coverage_days'], 5.0)
+
+    def test_forecast_marks_critical_when_coverage_is_below_supplier_lead_time(self):
+        response = self.client.get('/api/analytics/rupture-forecast/?days=30')
+        items = {item['sku']: item for item in response.data['items']}
+
+        self.assertEqual(items['RUP001']['risk'], 'CRITICO')
+        self.assertEqual(items['RUP002']['risk'], 'OK')
+
+    def test_forecast_marks_zero_stock_as_rupture(self):
+        response = self.client.get('/api/analytics/rupture-forecast/?days=30')
+        items = {item['sku']: item for item in response.data['items']}
+
+        self.assertEqual(items['RUP004']['risk'], 'RUPTURA')
+        self.assertEqual(items['RUP004']['coverage_days'], 0.0)
+
+    def test_forecast_marks_product_without_sales_history(self):
+        response = self.client.get('/api/analytics/rupture-forecast/?days=30')
+        items = {item['sku']: item for item in response.data['items']}
+
+        self.assertEqual(items['RUP003']['risk'], 'SEM_HISTORICO')
+        self.assertIsNone(items['RUP003']['coverage_days'])
+        self.assertIsNone(items['RUP003']['rupture_date'])
+
+    def test_forecast_returns_summary(self):
+        response = self.client.get('/api/analytics/rupture-forecast/?days=30')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['summary']['RUPTURA'], 1)
+        self.assertEqual(response.data['summary']['CRITICO'], 1)
+        self.assertEqual(response.data['summary']['OK'], 1)
+        self.assertEqual(response.data['summary']['SEM_HISTORICO'], 1)
+

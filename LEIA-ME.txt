@@ -1,45 +1,59 @@
-FEATURE: PRODUTOS PARADOS
+FEATURE: PREVISÃO DE RUPTURA
 
 Branch sugerida:
-feature/produtos-parados
+feature/previsao-ruptura
 
 Source:
 develop
 
 O que esta etapa implementa:
-- Identificação de produtos com estoque e sem venda por determinado período.
-- Períodos disponíveis:
+- Previsão de quantos dias o estoque atual deve durar.
+- Consumo médio diário calculado pelas vendas recentes.
+- Períodos de análise:
+  * 30 dias
   * 60 dias
   * 90 dias
-  * 180 dias
-  * 365 dias
-- Exibe a última venda do produto.
-- Identifica produtos que nunca foram vendidos.
-- Calcula há quantos dias o produto está sem venda.
-- Calcula o valor financeiro imobilizado em cada produto:
-  quantidade em estoque x preço de custo.
-- Calcula o capital total imobilizado em produtos parados.
-- Não considera produtos com estoque zerado.
-- Produtos recém-cadastrados e nunca vendidos só são classificados como parados
-  depois de completarem o período selecionado.
-- A análise aparece dentro da tela "Análises".
+- Prazo médio de entrega do fornecedor.
+- Data estimada de ruptura do estoque.
+- Classificação de risco:
+  * RUPTURA = estoque já zerado e existe consumo histórico
+  * CRITICO = cobertura menor ou igual ao prazo do fornecedor
+  * ATENCAO = cobertura próxima do prazo do fornecedor
+  * OK = cobertura confortável
+  * SEM_HISTORICO = sem vendas suficientes no período
+- Resumo da quantidade de produtos em cada situação.
+- Tabela detalhada dentro da tela "Análises".
 - Testes automatizados da API.
 
-Nova rota da API:
-GET /api/analytics/slow-products/?days=90
+FÓRMULA PRINCIPAL:
+Consumo médio diário = quantidade vendida / dias analisados
+
+Cobertura em dias = estoque atual / consumo médio diário
+
+Exemplo:
+Estoque atual = 10 unidades
+Vendas nos últimos 30 dias = 60 unidades
+Consumo médio = 2 unidades/dia
+Cobertura = 5 dias
+
+Se o fornecedor demora 7 dias para entregar:
+o produto é classificado como CRÍTICO.
+
+Nova rota:
+GET /api/analytics/rupture-forecast/?days=30&safety_days=3
 
 COMO APLICAR:
 1. No GitHub Desktop, vá para develop.
 2. Faça Fetch/Pull origin.
 3. Crie:
-   feature/produtos-parados
+   feature/previsao-ruptura
    Source: develop
 4. Extraia este ZIP.
 5. Copie as pastas backend e frontend para a raiz do AutoStock.
 6. Mescle/substitua os arquivos existentes.
 7. Confira as alterações no GitHub Desktop.
 8. Commit:
-   feat: implementa analise de produtos parados
+   feat: implementa previsao de ruptura de estoque
 9. Push origin.
 10. Abra Pull Request para develop.
 11. Faça o merge e apague a branch.
