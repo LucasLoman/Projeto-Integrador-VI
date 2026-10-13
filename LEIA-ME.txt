@@ -1,71 +1,64 @@
-TESTE: BACKEND
+TESTE: FRONTEND
 
 Branch sugerida:
-test/backend
+test/frontend
 
 Source:
 develop
 
-Objetivo desta etapa:
-Criar uma camada de testes de integração para verificar se os principais módulos
-do backend continuam funcionando juntos após todas as features já desenvolvidas.
+Objetivo:
+Adicionar testes automatizados para as principais telas React usando
+Vitest + React Testing Library.
 
-O que esta branch adiciona:
-- Ambiente de teste separado usando SQLite em memória.
-- Configuração do pytest para executar os testes do projeto.
-- Testes de autenticação JWT.
-- Teste de bloqueio de endpoints sem login.
-- Teste de fluxo completo:
-  cadastro -> entrada de estoque -> venda -> baixa automática -> análises.
-- Teste de venda com estoque insuficiente.
-- Teste de saída manual acima do saldo disponível.
-- Smoke tests dos endpoints:
-  * Dashboard
-  * Curva ABC
-  * Produtos parados
-  * Previsão de ruptura
-  * Sugestão de reposição
-
-IMPORTANTE:
-Os testes já criados durante as features, dentro de inventory/tests.py,
-continuam sendo executados. Esta branch NÃO substitui esses testes:
-ela adiciona testes de integração em backend/tests/.
+Esta etapa adiciona:
+- Vitest
+- jsdom
+- React Testing Library
+- jest-dom
+- user-event
+- cobertura V8
+- teste da tela Produtos
+- teste de pesquisa
+- teste de cadastro de produto
+- teste da página de QR Code
+- teste de erro do QR Code
+- teste de login inválido
 
 COMO APLICAR:
 1. No GitHub Desktop, vá para develop.
 2. Faça Fetch/Pull origin.
 3. Crie:
-   test/backend
+   test/frontend
    Source: develop
 4. Extraia este ZIP.
-5. Copie a pasta backend para a raiz do AutoStock.
+5. Copie a pasta frontend para a raiz do AutoStock.
 6. Mescle/substitua os arquivos existentes.
-7. Commit:
-   test: adiciona testes de integracao do backend
-8. Push origin.
-9. Abra Pull Request para develop.
-10. Faça o merge e apague a branch.
-
-COMO EXECUTAR:
-No terminal, dentro da pasta backend:
-
-    pytest
-
-Para saída mais detalhada:
-
-    pytest -v
-
-O pytest usará autostock.settings_test e criará um banco SQLite em memória,
-então não é necessário ter o PostgreSQL ativo somente para executar os testes.
+7. Abra um terminal dentro de frontend.
+8. Execute:
+   npm install
+9. Inclua o package-lock.json criado/atualizado no commit.
+10. Execute:
+   npm test
+11. Para cobertura:
+   npm run test:coverage
+12. Commit:
+   test: adiciona testes automatizados do frontend
+13. Push origin.
+14. Pull Request para develop.
+15. Merge e apague a branch.
 
 Arquivos desta branch:
-- backend/autostock/settings_test.py
-- backend/pytest.ini
-- backend/tests/__init__.py
-- backend/tests/conftest.py
-- backend/tests/test_auth.py
-- backend/tests/test_inventory_workflow.py
-- backend/tests/test_analytics_smoke.py
+- frontend/package.json
+- frontend/vitest.config.ts
+- frontend/src/test/setup.ts
+- frontend/src/test/Products.test.tsx
+- frontend/src/test/ProductQR.test.tsx
+- frontend/src/test/Login.test.tsx
 
-Depois desta etapa, a próxima branch é:
-test/frontend
+Os testes simulam as respostas da API, então o backend não precisa estar
+rodando para executar a suíte do frontend.
+
+Depois desta branch, faltam 3:
+- devops/docker
+- devops/github-actions
+- devops/deploy
