@@ -1,70 +1,71 @@
-FEATURE: QR CODE
+TESTE: BACKEND
 
 Branch sugerida:
-feature/qrcode
+test/backend
 
 Source:
 develop
 
-O que esta etapa implementa:
-- Botão "QR Code" na listagem de produtos.
-- Tela individual do produto com QR Code.
-- QR Code contendo o link direto para o produto no AutoStock.
-- Consulta de SKU, estoque, localização, categoria, marca e fornecedor.
-- Botão para baixar o QR Code em SVG.
-- Botão para imprimir uma etiqueta.
-- Layout de impressão próprio para a etiqueta.
-- Redirecionamento após login: se o funcionário escanear o QR sem estar logado,
-  o sistema leva ao login e depois retorna para o produto solicitado.
-- URL configurável por VITE_APP_URL.
+Objetivo desta etapa:
+Criar uma camada de testes de integração para verificar se os principais módulos
+do backend continuam funcionando juntos após todas as features já desenvolvidas.
+
+O que esta branch adiciona:
+- Ambiente de teste separado usando SQLite em memória.
+- Configuração do pytest para executar os testes do projeto.
+- Testes de autenticação JWT.
+- Teste de bloqueio de endpoints sem login.
+- Teste de fluxo completo:
+  cadastro -> entrada de estoque -> venda -> baixa automática -> análises.
+- Teste de venda com estoque insuficiente.
+- Teste de saída manual acima do saldo disponível.
+- Smoke tests dos endpoints:
+  * Dashboard
+  * Curva ABC
+  * Produtos parados
+  * Previsão de ruptura
+  * Sugestão de reposição
 
 IMPORTANTE:
-A biblioteca qrcode.react já está nas dependências do projeto inicial.
-Não é necessária nova migration nem alteração no backend.
-
-COMO FUNCIONA:
-1. Na tela Produtos, clique em "QR Code".
-2. O AutoStock gera uma etiqueta para aquele produto.
-3. O QR contém um endereço como:
-   https://seu-autostock.com/produto/15
-4. Ao escanear pelo celular, o funcionário acessa diretamente o produto.
-5. Se não estiver autenticado, faz login e retorna ao produto.
-
-PARA TESTAR LOCALMENTE:
-VITE_APP_URL=http://localhost:5173 funciona no mesmo computador.
-Para escanear com outro celular durante desenvolvimento local, localhost do PC
-não é acessível diretamente pelo celular. Use o endereço IP do computador na rede
-ou, de preferência, teste após o deploy.
-
-No .env, por exemplo:
-VITE_APP_URL=http://192.168.0.100:5173
-
-No ambiente publicado:
-VITE_APP_URL=https://autostock.seudominio.com
+Os testes já criados durante as features, dentro de inventory/tests.py,
+continuam sendo executados. Esta branch NÃO substitui esses testes:
+ela adiciona testes de integração em backend/tests/.
 
 COMO APLICAR:
 1. No GitHub Desktop, vá para develop.
 2. Faça Fetch/Pull origin.
 3. Crie:
-   feature/qrcode
+   test/backend
    Source: develop
 4. Extraia este ZIP.
-5. Copie as pastas frontend e o arquivo .env.example para a raiz do AutoStock.
+5. Copie a pasta backend para a raiz do AutoStock.
 6. Mescle/substitua os arquivos existentes.
-7. Confira as alterações no GitHub Desktop.
-8. Commit:
-   feat: implementa QR Code para produtos
-9. Push origin.
-10. Abra Pull Request para develop.
-11. Faça o merge e apague a branch.
+7. Commit:
+   test: adiciona testes de integracao do backend
+8. Push origin.
+9. Abra Pull Request para develop.
+10. Faça o merge e apague a branch.
+
+COMO EXECUTAR:
+No terminal, dentro da pasta backend:
+
+    pytest
+
+Para saída mais detalhada:
+
+    pytest -v
+
+O pytest usará autostock.settings_test e criará um banco SQLite em memória,
+então não é necessário ter o PostgreSQL ativo somente para executar os testes.
 
 Arquivos desta branch:
-- frontend/src/pages/Products.tsx
-- frontend/src/pages/ProductQR.tsx
-- frontend/src/pages/Login.tsx
-- frontend/src/App.tsx
-- frontend/src/styles.css
-- .env.example
+- backend/autostock/settings_test.py
+- backend/pytest.ini
+- backend/tests/__init__.py
+- backend/tests/conftest.py
+- backend/tests/test_auth.py
+- backend/tests/test_inventory_workflow.py
+- backend/tests/test_analytics_smoke.py
 
 Depois desta etapa, a próxima branch é:
-test/backend
+test/frontend
