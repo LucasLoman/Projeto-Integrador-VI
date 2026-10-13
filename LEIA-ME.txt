@@ -1,69 +1,70 @@
-FEATURE: SUGESTÃO DE REPOSIÇÃO
+FEATURE: QR CODE
 
 Branch sugerida:
-feature/sugestao-reposicao
+feature/qrcode
 
 Source:
 develop
 
 O que esta etapa implementa:
-- Sugestão automática de quais produtos devem ser comprados.
-- Quantidade recomendada para compra.
-- Custo estimado da reposição.
-- Consumo médio diário com base nas vendas.
-- Prazo médio de entrega do fornecedor.
-- Estoque de segurança.
-- Ponto de reposição.
-- Estoque alvo após a compra.
-- Período de consumo configurável: 30, 60 ou 90 dias.
-- Meta de cobertura adicional configurável: 7, 15 ou 30 dias.
-- Produtos sem giro NÃO recebem sugestão automática de compra.
-- Resumo com quantidade de produtos, unidades e custo estimado.
-- Testes automatizados da API.
+- Botão "QR Code" na listagem de produtos.
+- Tela individual do produto com QR Code.
+- QR Code contendo o link direto para o produto no AutoStock.
+- Consulta de SKU, estoque, localização, categoria, marca e fornecedor.
+- Botão para baixar o QR Code em SVG.
+- Botão para imprimir uma etiqueta.
+- Layout de impressão próprio para a etiqueta.
+- Redirecionamento após login: se o funcionário escanear o QR sem estar logado,
+  o sistema leva ao login e depois retorna para o produto solicitado.
+- URL configurável por VITE_APP_URL.
 
-FÓRMULAS:
+IMPORTANTE:
+A biblioteca qrcode.react já está nas dependências do projeto inicial.
+Não é necessária nova migration nem alteração no backend.
 
-Consumo médio diário:
-vendas no período / dias analisados
+COMO FUNCIONA:
+1. Na tela Produtos, clique em "QR Code".
+2. O AutoStock gera uma etiqueta para aquele produto.
+3. O QR contém um endereço como:
+   https://seu-autostock.com/produto/15
+4. Ao escanear pelo celular, o funcionário acessa diretamente o produto.
+5. Se não estiver autenticado, faz login e retorna ao produto.
 
-Estoque de segurança:
-maior valor entre estoque mínimo e consumo médio x dias de segurança
+PARA TESTAR LOCALMENTE:
+VITE_APP_URL=http://localhost:5173 funciona no mesmo computador.
+Para escanear com outro celular durante desenvolvimento local, localhost do PC
+não é acessível diretamente pelo celular. Use o endereço IP do computador na rede
+ou, de preferência, teste após o deploy.
 
-Ponto de reposição:
-(consumo médio x prazo do fornecedor) + estoque de segurança
+No .env, por exemplo:
+VITE_APP_URL=http://192.168.0.100:5173
 
-Estoque alvo:
-(consumo médio x (prazo do fornecedor + dias alvo)) + estoque de segurança
-
-Quantidade sugerida:
-estoque alvo - estoque atual
-
-A compra só é recomendada quando o estoque atual estiver no ponto de reposição
-ou abaixo dele.
-
-Rota:
-GET /api/analytics/replenishment/?days=30&safety_days=3&target_days=15
+No ambiente publicado:
+VITE_APP_URL=https://autostock.seudominio.com
 
 COMO APLICAR:
 1. No GitHub Desktop, vá para develop.
 2. Faça Fetch/Pull origin.
 3. Crie:
-   feature/sugestao-reposicao
+   feature/qrcode
    Source: develop
 4. Extraia este ZIP.
-5. Copie as pastas backend e frontend para a raiz do AutoStock.
+5. Copie as pastas frontend e o arquivo .env.example para a raiz do AutoStock.
 6. Mescle/substitua os arquivos existentes.
 7. Confira as alterações no GitHub Desktop.
 8. Commit:
-   feat: implementa sugestao automatica de reposicao
+   feat: implementa QR Code para produtos
 9. Push origin.
 10. Abra Pull Request para develop.
 11. Faça o merge e apague a branch.
 
 Arquivos desta branch:
-- backend/inventory/views.py
-- backend/inventory/tests.py
-- frontend/src/pages/Analytics.tsx
+- frontend/src/pages/Products.tsx
+- frontend/src/pages/ProductQR.tsx
+- frontend/src/pages/Login.tsx
+- frontend/src/App.tsx
 - frontend/src/styles.css
+- .env.example
 
-Não é necessária nova migration nesta etapa.
+Depois desta etapa, a próxima branch é:
+test/backend

@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react'
 import { api } from '../api'
+import { useNavigate } from 'react-router-dom'
 
 type Option = { id: number; name: string }
 
@@ -48,6 +49,7 @@ const emptyForm: ProductForm = {
 }
 
 export default function Products() {
+  const navigate = useNavigate()
   const [items, setItems] = useState<Product[]>([])
   const [categories, setCategories] = useState<Option[]>([])
   const [brands, setBrands] = useState<Option[]>([])
@@ -294,6 +296,13 @@ export default function Products() {
                   <td>{product.active ? 'Ativo' : 'Inativo'}</td>
                   <td>
                     <div className="row-actions">
+                      <button
+                        type="button"
+                        className="small"
+                        onClick={() => navigate(`/produto/${product.id}`)}
+                      >
+                        QR Code
+                      </button>
                       <button type="button" className="secondary small" onClick={() => startEdit(product)}>Editar</button>
                       <button type="button" className="danger small" onClick={() => removeProduct(product)}>Excluir</button>
                     </div>
