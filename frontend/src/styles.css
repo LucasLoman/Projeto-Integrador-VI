@@ -36,3 +36,27 @@
 .replenishment-controls label{display:grid;gap:6px;font-size:14px;font-weight:600}
 .replenishment-controls select{min-width:190px}
 
+/* QR Code de produtos */
+.qr-page{display:grid;grid-template-columns:minmax(300px,380px) 1fr;gap:22px;align-items:start;margin-top:18px}
+.qr-label{background:white;border:1px solid #d1d5db;border-radius:14px;padding:24px;display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;box-shadow:0 1px 4px #0001}
+.qr-brand{font-size:22px;font-weight:800}
+.qr-product-name{font-size:18px}
+.qr-sku{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:15px}
+.qr-meta{display:grid;grid-template-columns:1fr 1fr;gap:12px;width:100%;margin-top:6px;padding-top:12px;border-top:1px solid #e5e7eb}
+.qr-details{margin-top:0}
+.product-detail-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:0}
+.product-detail-list div{background:#f8fafc;border-radius:10px;padding:12px}
+.product-detail-list dt{font-size:12px;color:#64748b;margin-bottom:4px}
+.product-detail-list dd{margin:0;font-weight:600}
+.qr-url{margin-top:16px;word-break:break-all}
+.link-button{display:inline-flex;align-items:center;text-decoration:none;padding:11px 16px;border-radius:8px;color:white;font-weight:600}
+@media(max-width:850px){.qr-page{grid-template-columns:1fr}.product-detail-list{grid-template-columns:1fr}}
+@media print{
+  body{background:white}
+  .app{display:block;min-height:auto}
+  aside,.no-print{display:none!important}
+  main{padding:0;overflow:visible}
+  .qr-page{display:block;margin:0}
+  .qr-label{width:90mm;min-height:110mm;margin:0 auto;box-shadow:none;border:1px solid #000}
+}
+
