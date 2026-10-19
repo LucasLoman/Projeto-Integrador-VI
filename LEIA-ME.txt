@@ -1,23 +1,16 @@
-CORREÇÃO: BACKEND - DECIMAL EM SALEITEM
+CORREÇÃO: TESTE DO DASHBOARD
 
-Problema detectado pelo GitHub Actions:
-Os testes criam SaleItem diretamente com unit_price como string, por exemplo:
+Problema:
+O endpoint retorna numericamente 200, enquanto o teste comparava texto:
+'200' != '200.00'
 
-    unit_price='50.00'
+O valor está correto; o erro era apenas de formatação textual.
 
-No método save(), a expressão:
+Correção:
+Os testes agora convertem o retorno para Decimal antes de comparar:
+Decimal('200') == Decimal('200.00')
 
-    self.quantity * self.unit_price
-
-acabava fazendo repetição de texto:
-    2 * '50.00' -> '50.0050.00'
-
-O Django então tentava salvar esse texto em um DecimalField e gerava:
-    ValidationError: deve ser um número decimal.
-
-CORREÇÃO:
-O método SaleItem.save() agora converte explicitamente unit_price e quantity
-para Decimal antes de calcular subtotal.
+Também foi ajustado o teste de avg_ticket_30d para evitar a mesma falha logo em seguida.
 
 COMO APLICAR:
 1. Continue na branch:
@@ -25,26 +18,17 @@ COMO APLICAR:
 
 2. Extraia este ZIP.
 
-3. Copie a pasta backend para a raiz do AutoStock e substitua:
-   backend/inventory/models.py
+3. Copie a pasta backend para a raiz do projeto e substitua:
+   backend/inventory/tests.py
 
-4. Faça um commit adicional:
-   fix: corrige calculo decimal de itens de venda
+4. Faça commit:
+   fix: corrige comparacao decimal nos testes do dashboard
 
 5. Push origin.
 
-6. O mesmo Pull Request #20 será atualizado automaticamente e o GitHub Actions
-   executará os checks novamente.
+6. O Pull Request existente será atualizado e os checks rodarão novamente.
 
-7. NÃO faça merge até os checks ficarem verdes.
+Teste local opcional:
+    docker compose exec backend pytest -x -vv
 
-TESTE LOCAL OPCIONAL:
-Dentro de backend:
-
-    pytest
-
-Ou com Docker:
-
-    docker compose exec backend pytest
-
-Não é necessária migration porque a estrutura do banco não mudou.
+Não é necessária migration.

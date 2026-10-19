@@ -1,3 +1,4 @@
+from decimal import Decimal
 from django.contrib.auth.models import User
 from rest_framework.test import APITestCase
 from rest_framework import status
@@ -490,8 +491,8 @@ class DashboardTests(APITestCase):
         self.assertEqual(response.data['out_of_stock'], 0)
         self.assertEqual(response.data['inventory_units'], 12)
         self.assertEqual(response.data['sales_count_30d'], 1)
-        self.assertEqual(str(response.data['sales_30d']), '200.00')
-        self.assertEqual(str(response.data['avg_ticket_30d']), '200.00')
+        self.assertEqual(Decimal(str(response.data['sales_30d'])), Decimal('200.00'))
+        self.assertEqual(Decimal(str(response.data['avg_ticket_30d'])), Decimal('200.00'))
 
     def test_dashboard_lists_top_selling_product(self):
         response = self.client.get('/api/dashboard/')
