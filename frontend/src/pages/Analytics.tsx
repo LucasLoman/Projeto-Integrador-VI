@@ -365,7 +365,7 @@ export default function Analytics() {
                 <XAxis dataKey="label" angle={-20} textAnchor="end" height={75} />
                 <YAxis />
                 <Tooltip
-                  formatter={(value: number) => [money(value), 'Faturamento']}
+                  formatter={(value) => [money(Number(value ?? 0)), 'Faturamento']}
                   labelFormatter={(_, payload) =>
                     payload?.[0]?.payload?.product__name || ''
                   }

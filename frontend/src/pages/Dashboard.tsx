@@ -163,7 +163,7 @@ export default function Dashboard() {
                       <XAxis dataKey="label" angle={-15} textAnchor="end" height={65} />
                       <YAxis />
                       <Tooltip
-                        formatter={(value: number) => [money(value), 'Faturamento']}
+                        formatter={(value) => [money(Number(value ?? 0)), 'Faturamento']}
                         labelFormatter={(_, payload) =>
                           payload?.[0]?.payload?.product__name || ''
                         }

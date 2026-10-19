@@ -1,111 +1,40 @@
-DEVOPS: DOCKER
+CORREÇÃO: BUILD DO FRONTEND - TYPESCRIPT/VITE
 
-Branch sugerida:
-devops/docker
+Erros corrigidos:
+1. import.meta.env não reconhecido
+2. import './styles.css' sem declaração de tipo
+3. formatter do Recharts incompatível com a tipagem atual
+4. location.reload() sendo chamado no objeto retornado por useLocation()
+5. moduleResolution antigo do TypeScript
 
-Source:
-develop
-
-Objetivo:
-Padronizar o ambiente do AutoStock para que qualquer integrante consiga iniciar
-frontend, backend e PostgreSQL com um único comando.
-
-O que esta etapa adiciona:
-- Docker Compose com 3 serviços:
-  * PostgreSQL
-  * Django
-  * React/Vite
-- Healthcheck do banco.
-- Healthcheck do backend.
-- Healthcheck do frontend.
-- Volume persistente do PostgreSQL.
-- Volume isolado para node_modules.
-- Migrations automáticas ao iniciar o backend.
-- Espera automática do PostgreSQL antes de iniciar o Django.
-- .dockerignore para backend e frontend.
-- Portas configuráveis por .env.
+Arquivos corrigidos:
+- frontend/tsconfig.json
+- frontend/src/vite-env.d.ts
+- frontend/src/pages/Login.tsx
+- frontend/src/pages/Analytics.tsx
+- frontend/src/pages/Dashboard.tsx
 
 COMO APLICAR:
-1. No GitHub Desktop, vá para develop.
-2. Faça Fetch/Pull origin.
-3. Crie:
-   devops/docker
-   Source: develop
-4. Extraia este ZIP.
-5. Copie:
-   - docker-compose.yml
-   - .env.example
-   - pasta backend
-   - pasta frontend
-   para a raiz do AutoStock.
-6. Mescle/substitua os arquivos existentes.
-7. Na raiz do projeto, crie o arquivo .env copiando .env.example.
-8. Troque pelo menos:
-   POSTGRES_PASSWORD
-   DJANGO_SECRET_KEY
+1. Continue na branch:
+   devops/github-actions
 
-NO WINDOWS:
-Você precisa ter o Docker Desktop instalado e aberto.
+2. Extraia este ZIP.
 
-PARA SUBIR O SISTEMA:
-Na raiz do AutoStock:
+3. Copie a pasta frontend para a raiz do AutoStock.
+   Escolha mesclar/substituir os arquivos existentes.
 
-    docker compose up --build
+4. Dentro de frontend, rode:
+   npm run build
 
-Depois acesse:
-Frontend:
-    http://localhost:5173
+5. Se o build terminar sem erros, rode:
+   npm test
 
-Backend/API:
-    http://localhost:8000/api
+6. Faça o commit:
+   fix: corrige tipagens do build frontend
 
-Admin Django:
-    http://localhost:8000/admin
+7. Push origin.
 
-PARA CRIAR O USUÁRIO ADMINISTRADOR:
-Com os containers rodando:
+8. O Pull Request atual será atualizado e o GitHub Actions rodará novamente.
 
-    docker compose exec backend python manage.py createsuperuser
-
-PARA VER OS CONTAINERS:
-    docker compose ps
-
-PARA VER LOGS:
-    docker compose logs -f
-
-Somente backend:
-    docker compose logs -f backend
-
-PARA PARAR:
-    docker compose down
-
-PARA PARAR E APAGAR O BANCO LOCAL:
-ATENÇÃO: esse comando apaga os dados do PostgreSQL do Docker.
-
-    docker compose down -v
-
-TESTES DENTRO DO DOCKER:
-Backend:
-    docker compose exec backend pytest
-
-Frontend:
-    docker compose exec frontend npm test
-
-COMMIT SUGERIDO:
-    devops: configura ambiente com Docker Compose
-
-Depois:
-Push origin -> Pull Request para develop -> Merge -> apagar a branch.
-
-Arquivos desta branch:
-- docker-compose.yml
-- .env.example
-- backend/Dockerfile
-- backend/.dockerignore
-- backend/entrypoint.sh
-- frontend/Dockerfile
-- frontend/.dockerignore
-
-Depois desta branch faltam 2:
-- devops/github-actions
-- devops/deploy
+Resultado esperado do build:
+vite build concluído e pasta dist gerada.
