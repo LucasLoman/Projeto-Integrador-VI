@@ -1,16 +1,18 @@
-CORREÇÃO: TESTE DO DASHBOARD
+CORREÇÃO: BUILD DO FRONTEND - TYPESCRIPT/VITE
 
-Problema:
-O endpoint retorna numericamente 200, enquanto o teste comparava texto:
-'200' != '200.00'
+Erros corrigidos:
+1. import.meta.env não reconhecido
+2. import './styles.css' sem declaração de tipo
+3. formatter do Recharts incompatível com a tipagem atual
+4. location.reload() sendo chamado no objeto retornado por useLocation()
+5. moduleResolution antigo do TypeScript
 
-O valor está correto; o erro era apenas de formatação textual.
-
-Correção:
-Os testes agora convertem o retorno para Decimal antes de comparar:
-Decimal('200') == Decimal('200.00')
-
-Também foi ajustado o teste de avg_ticket_30d para evitar a mesma falha logo em seguida.
+Arquivos corrigidos:
+- frontend/tsconfig.json
+- frontend/src/vite-env.d.ts
+- frontend/src/pages/Login.tsx
+- frontend/src/pages/Analytics.tsx
+- frontend/src/pages/Dashboard.tsx
 
 COMO APLICAR:
 1. Continue na branch:
@@ -18,17 +20,21 @@ COMO APLICAR:
 
 2. Extraia este ZIP.
 
-3. Copie a pasta backend para a raiz do projeto e substitua:
-   backend/inventory/tests.py
+3. Copie a pasta frontend para a raiz do AutoStock.
+   Escolha mesclar/substituir os arquivos existentes.
 
-4. Faça commit:
-   fix: corrige comparacao decimal nos testes do dashboard
+4. Dentro de frontend, rode:
+   npm run build
 
-5. Push origin.
+5. Se o build terminar sem erros, rode:
+   npm test
 
-6. O Pull Request existente será atualizado e os checks rodarão novamente.
+6. Faça o commit:
+   fix: corrige tipagens do build frontend
 
-Teste local opcional:
-    docker compose exec backend pytest -x -vv
+7. Push origin.
 
-Não é necessária migration.
+8. O Pull Request atual será atualizado e o GitHub Actions rodará novamente.
+
+Resultado esperado do build:
+vite build concluído e pasta dist gerada.
