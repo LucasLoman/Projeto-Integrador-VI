@@ -1,111 +1,91 @@
-DEVOPS: DOCKER
+DEVOPS: GITHUB ACTIONS
 
 Branch sugerida:
-devops/docker
+devops/github-actions
 
 Source:
 develop
 
 Objetivo:
-Padronizar o ambiente do AutoStock para que qualquer integrante consiga iniciar
-frontend, backend e PostgreSQL com um único comando.
+Configurar Integração Contínua (CI) no GitHub para que os testes e verificações
+do AutoStock sejam executados automaticamente a cada Pull Request e a cada push
+para develop ou main.
 
-O que esta etapa adiciona:
-- Docker Compose com 3 serviços:
-  * PostgreSQL
-  * Django
-  * React/Vite
-- Healthcheck do banco.
-- Healthcheck do backend.
-- Healthcheck do frontend.
-- Volume persistente do PostgreSQL.
-- Volume isolado para node_modules.
-- Migrations automáticas ao iniciar o backend.
-- Espera automática do PostgreSQL antes de iniciar o Django.
-- .dockerignore para backend e frontend.
-- Portas configuráveis por .env.
+O QUE ESTA ETAPA ADICIONA:
+
+1. Backend - Django / Pytest
+- Configura Python 3.12.
+- Instala requirements.txt.
+- Executa o check do Django.
+- Executa toda a suíte pytest.
+- Usa o settings_test criado anteriormente, com SQLite em memória.
+
+2. Frontend - React / Vitest
+- Configura Node.js 22.
+- Instala as dependências.
+- Executa npm test.
+- Executa npm run build para conferir se o projeto compila.
+
+3. Docker
+- Valida o docker-compose.yml.
+- Faz build dos containers para identificar problemas de Dockerfile/configuração.
+
+4. Pull Request Template
+- Adiciona um checklist padrão quando alguém abre Pull Request.
+
+QUANDO A AUTOMAÇÃO RODA:
+- Pull Request para develop.
+- Pull Request para main.
+- Push em develop.
+- Push em main.
+- Também pode ser iniciada manualmente pela aba Actions.
 
 COMO APLICAR:
 1. No GitHub Desktop, vá para develop.
 2. Faça Fetch/Pull origin.
 3. Crie:
-   devops/docker
+   devops/github-actions
    Source: develop
 4. Extraia este ZIP.
-5. Copie:
-   - docker-compose.yml
-   - .env.example
-   - pasta backend
-   - pasta frontend
-   para a raiz do AutoStock.
-6. Mescle/substitua os arquivos existentes.
-7. Na raiz do projeto, crie o arquivo .env copiando .env.example.
-8. Troque pelo menos:
-   POSTGRES_PASSWORD
-   DJANGO_SECRET_KEY
+5. Copie a pasta .github para a raiz do AutoStock.
+   A estrutura deve ficar:
 
-NO WINDOWS:
-Você precisa ter o Docker Desktop instalado e aberto.
+   AutoStock/
+   ├── .github/
+   │   ├── workflows/
+   │   │   └── ci.yml
+   │   └── pull_request_template.md
+   ├── backend/
+   ├── frontend/
+   └── docker-compose.yml
 
-PARA SUBIR O SISTEMA:
-Na raiz do AutoStock:
+6. Faça o commit:
+   devops: configura integracao continua com GitHub Actions
 
-    docker compose up --build
+7. Push origin.
+8. Abra Pull Request para develop.
 
-Depois acesse:
-Frontend:
-    http://localhost:5173
+AO ABRIR O PULL REQUEST:
+O próprio GitHub deverá mostrar os checks:
 
-Backend/API:
-    http://localhost:8000/api
+- Backend - Django / Pytest
+- Frontend - React / Vitest
+- Docker - Validar configuração
 
-Admin Django:
-    http://localhost:8000/admin
+Aguarde os três ficarem verdes antes do merge.
 
-PARA CRIAR O USUÁRIO ADMINISTRADOR:
-Com os containers rodando:
+IMPORTANTE:
+O arquivo frontend/package-lock.json deve estar versionado no GitHub.
+Como ele foi criado na etapa test/frontend com npm install, confirme no
+GitHub Desktop que ele foi incluído no commit anterior.
 
-    docker compose exec backend python manage.py createsuperuser
+SE UM CHECK FICAR VERMELHO:
+Abra o Pull Request -> Details no check que falhou -> leia a última mensagem
+do log. Não faça o merge até corrigir.
 
-PARA VER OS CONTAINERS:
-    docker compose ps
+ARQUIVOS DESTA BRANCH:
+- .github/workflows/ci.yml
+- .github/pull_request_template.md
 
-PARA VER LOGS:
-    docker compose logs -f
-
-Somente backend:
-    docker compose logs -f backend
-
-PARA PARAR:
-    docker compose down
-
-PARA PARAR E APAGAR O BANCO LOCAL:
-ATENÇÃO: esse comando apaga os dados do PostgreSQL do Docker.
-
-    docker compose down -v
-
-TESTES DENTRO DO DOCKER:
-Backend:
-    docker compose exec backend pytest
-
-Frontend:
-    docker compose exec frontend npm test
-
-COMMIT SUGERIDO:
-    devops: configura ambiente com Docker Compose
-
-Depois:
-Push origin -> Pull Request para develop -> Merge -> apagar a branch.
-
-Arquivos desta branch:
-- docker-compose.yml
-- .env.example
-- backend/Dockerfile
-- backend/.dockerignore
-- backend/entrypoint.sh
-- frontend/Dockerfile
-- frontend/.dockerignore
-
-Depois desta branch faltam 2:
-- devops/github-actions
-- devops/deploy
+Depois desta branch falta somente:
+devops/deploy
