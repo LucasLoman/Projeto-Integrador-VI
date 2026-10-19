@@ -1,64 +1,111 @@
-TESTE: FRONTEND
+DEVOPS: DOCKER
 
 Branch sugerida:
-test/frontend
+devops/docker
 
 Source:
 develop
 
 Objetivo:
-Adicionar testes automatizados para as principais telas React usando
-Vitest + React Testing Library.
+Padronizar o ambiente do AutoStock para que qualquer integrante consiga iniciar
+frontend, backend e PostgreSQL com um único comando.
 
-Esta etapa adiciona:
-- Vitest
-- jsdom
-- React Testing Library
-- jest-dom
-- user-event
-- cobertura V8
-- teste da tela Produtos
-- teste de pesquisa
-- teste de cadastro de produto
-- teste da página de QR Code
-- teste de erro do QR Code
-- teste de login inválido
+O que esta etapa adiciona:
+- Docker Compose com 3 serviços:
+  * PostgreSQL
+  * Django
+  * React/Vite
+- Healthcheck do banco.
+- Healthcheck do backend.
+- Healthcheck do frontend.
+- Volume persistente do PostgreSQL.
+- Volume isolado para node_modules.
+- Migrations automáticas ao iniciar o backend.
+- Espera automática do PostgreSQL antes de iniciar o Django.
+- .dockerignore para backend e frontend.
+- Portas configuráveis por .env.
 
 COMO APLICAR:
 1. No GitHub Desktop, vá para develop.
 2. Faça Fetch/Pull origin.
 3. Crie:
-   test/frontend
+   devops/docker
    Source: develop
 4. Extraia este ZIP.
-5. Copie a pasta frontend para a raiz do AutoStock.
+5. Copie:
+   - docker-compose.yml
+   - .env.example
+   - pasta backend
+   - pasta frontend
+   para a raiz do AutoStock.
 6. Mescle/substitua os arquivos existentes.
-7. Abra um terminal dentro de frontend.
-8. Execute:
-   npm install
-9. Inclua o package-lock.json criado/atualizado no commit.
-10. Execute:
-   npm test
-11. Para cobertura:
-   npm run test:coverage
-12. Commit:
-   test: adiciona testes automatizados do frontend
-13. Push origin.
-14. Pull Request para develop.
-15. Merge e apague a branch.
+7. Na raiz do projeto, crie o arquivo .env copiando .env.example.
+8. Troque pelo menos:
+   POSTGRES_PASSWORD
+   DJANGO_SECRET_KEY
+
+NO WINDOWS:
+Você precisa ter o Docker Desktop instalado e aberto.
+
+PARA SUBIR O SISTEMA:
+Na raiz do AutoStock:
+
+    docker compose up --build
+
+Depois acesse:
+Frontend:
+    http://localhost:5173
+
+Backend/API:
+    http://localhost:8000/api
+
+Admin Django:
+    http://localhost:8000/admin
+
+PARA CRIAR O USUÁRIO ADMINISTRADOR:
+Com os containers rodando:
+
+    docker compose exec backend python manage.py createsuperuser
+
+PARA VER OS CONTAINERS:
+    docker compose ps
+
+PARA VER LOGS:
+    docker compose logs -f
+
+Somente backend:
+    docker compose logs -f backend
+
+PARA PARAR:
+    docker compose down
+
+PARA PARAR E APAGAR O BANCO LOCAL:
+ATENÇÃO: esse comando apaga os dados do PostgreSQL do Docker.
+
+    docker compose down -v
+
+TESTES DENTRO DO DOCKER:
+Backend:
+    docker compose exec backend pytest
+
+Frontend:
+    docker compose exec frontend npm test
+
+COMMIT SUGERIDO:
+    devops: configura ambiente com Docker Compose
+
+Depois:
+Push origin -> Pull Request para develop -> Merge -> apagar a branch.
 
 Arquivos desta branch:
-- frontend/package.json
-- frontend/vitest.config.ts
-- frontend/src/test/setup.ts
-- frontend/src/test/Products.test.tsx
-- frontend/src/test/ProductQR.test.tsx
-- frontend/src/test/Login.test.tsx
+- docker-compose.yml
+- .env.example
+- backend/Dockerfile
+- backend/.dockerignore
+- backend/entrypoint.sh
+- frontend/Dockerfile
+- frontend/.dockerignore
 
-Os testes simulam as respostas da API, então o backend não precisa estar
-rodando para executar a suíte do frontend.
-
-Depois desta branch, faltam 3:
-- devops/docker
+Depois desta branch faltam 2:
 - devops/github-actions
 - devops/deploy
