@@ -1,91 +1,50 @@
-DEVOPS: GITHUB ACTIONS
+CORREÇÃO: BACKEND - DECIMAL EM SALEITEM
 
-Branch sugerida:
-devops/github-actions
+Problema detectado pelo GitHub Actions:
+Os testes criam SaleItem diretamente com unit_price como string, por exemplo:
 
-Source:
-develop
+    unit_price='50.00'
 
-Objetivo:
-Configurar Integração Contínua (CI) no GitHub para que os testes e verificações
-do AutoStock sejam executados automaticamente a cada Pull Request e a cada push
-para develop ou main.
+No método save(), a expressão:
 
-O QUE ESTA ETAPA ADICIONA:
+    self.quantity * self.unit_price
 
-1. Backend - Django / Pytest
-- Configura Python 3.12.
-- Instala requirements.txt.
-- Executa o check do Django.
-- Executa toda a suíte pytest.
-- Usa o settings_test criado anteriormente, com SQLite em memória.
+acabava fazendo repetição de texto:
+    2 * '50.00' -> '50.0050.00'
 
-2. Frontend - React / Vitest
-- Configura Node.js 22.
-- Instala as dependências.
-- Executa npm test.
-- Executa npm run build para conferir se o projeto compila.
+O Django então tentava salvar esse texto em um DecimalField e gerava:
+    ValidationError: deve ser um número decimal.
 
-3. Docker
-- Valida o docker-compose.yml.
-- Faz build dos containers para identificar problemas de Dockerfile/configuração.
-
-4. Pull Request Template
-- Adiciona um checklist padrão quando alguém abre Pull Request.
-
-QUANDO A AUTOMAÇÃO RODA:
-- Pull Request para develop.
-- Pull Request para main.
-- Push em develop.
-- Push em main.
-- Também pode ser iniciada manualmente pela aba Actions.
+CORREÇÃO:
+O método SaleItem.save() agora converte explicitamente unit_price e quantity
+para Decimal antes de calcular subtotal.
 
 COMO APLICAR:
-1. No GitHub Desktop, vá para develop.
-2. Faça Fetch/Pull origin.
-3. Crie:
+1. Continue na branch:
    devops/github-actions
-   Source: develop
-4. Extraia este ZIP.
-5. Copie a pasta .github para a raiz do AutoStock.
-   A estrutura deve ficar:
 
-   AutoStock/
-   ├── .github/
-   │   ├── workflows/
-   │   │   └── ci.yml
-   │   └── pull_request_template.md
-   ├── backend/
-   ├── frontend/
-   └── docker-compose.yml
+2. Extraia este ZIP.
 
-6. Faça o commit:
-   devops: configura integracao continua com GitHub Actions
+3. Copie a pasta backend para a raiz do AutoStock e substitua:
+   backend/inventory/models.py
 
-7. Push origin.
-8. Abra Pull Request para develop.
+4. Faça um commit adicional:
+   fix: corrige calculo decimal de itens de venda
 
-AO ABRIR O PULL REQUEST:
-O próprio GitHub deverá mostrar os checks:
+5. Push origin.
 
-- Backend - Django / Pytest
-- Frontend - React / Vitest
-- Docker - Validar configuração
+6. O mesmo Pull Request #20 será atualizado automaticamente e o GitHub Actions
+   executará os checks novamente.
 
-Aguarde os três ficarem verdes antes do merge.
+7. NÃO faça merge até os checks ficarem verdes.
 
-IMPORTANTE:
-O arquivo frontend/package-lock.json deve estar versionado no GitHub.
-Como ele foi criado na etapa test/frontend com npm install, confirme no
-GitHub Desktop que ele foi incluído no commit anterior.
+TESTE LOCAL OPCIONAL:
+Dentro de backend:
 
-SE UM CHECK FICAR VERMELHO:
-Abra o Pull Request -> Details no check que falhou -> leia a última mensagem
-do log. Não faça o merge até corrigir.
+    pytest
 
-ARQUIVOS DESTA BRANCH:
-- .github/workflows/ci.yml
-- .github/pull_request_template.md
+Ou com Docker:
 
-Depois desta branch falta somente:
-devops/deploy
+    docker compose exec backend pytest
+
+Não é necessária migration porque a estrutura do banco não mudou.
