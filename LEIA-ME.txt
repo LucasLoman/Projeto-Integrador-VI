@@ -1,40 +1,59 @@
-CORREÇÃO: BUILD DO FRONTEND - TYPESCRIPT/VITE
+DEVOPS: DEPLOY
 
-Erros corrigidos:
-1. import.meta.env não reconhecido
-2. import './styles.css' sem declaração de tipo
-3. formatter do Recharts incompatível com a tipagem atual
-4. location.reload() sendo chamado no objeto retornado por useLocation()
-5. moduleResolution antigo do TypeScript
+Última branch do projeto.
 
-Arquivos corrigidos:
-- frontend/tsconfig.json
-- frontend/src/vite-env.d.ts
-- frontend/src/pages/Login.tsx
-- frontend/src/pages/Analytics.tsx
-- frontend/src/pages/Dashboard.tsx
+Branch:
+devops/deploy
 
-COMO APLICAR:
-1. Continue na branch:
-   devops/github-actions
+Source:
+develop
 
-2. Extraia este ZIP.
+O que esta etapa adiciona:
+- render.yaml
+- PostgreSQL no Render
+- deploy do backend Django
+- deploy do frontend React/Vite
+- ligação automática frontend -> backend
+- DATABASE_URL automática
+- DJANGO_SECRET_KEY gerada pelo Render
+- Gunicorn em produção
+- WhiteNoise para arquivos estáticos
+- migrations antes do deploy
+- endpoint /health/
+- rewrite do React Router
+- headers básicos de segurança
+- documentação completa de publicação
 
-3. Copie a pasta frontend para a raiz do AutoStock.
-   Escolha mesclar/substituir os arquivos existentes.
+COMO APLICAR NO GITHUB DESKTOP:
+1. Vá para develop.
+2. Faça Fetch/Pull.
+3. Crie:
+   devops/deploy
+   Source: develop
+4. Extraia este ZIP.
+5. Copie para a raiz do projeto:
+   - render.yaml
+   - backend/
+   - frontend/
+   - docs/
+6. Mescle/substitua os arquivos existentes.
+7. Faça commit:
+   devops: prepara AutoStock para deploy no Render
+8. Push origin.
+9. Pull Request para develop.
+10. Aguarde o GitHub Actions ficar verde.
+11. Merge e apague a branch.
 
-4. Dentro de frontend, rode:
-   npm run build
+DEPOIS:
+Faça o Pull Request final:
 
-5. Se o build terminar sem erros, rode:
-   npm test
+develop -> main
 
-6. Faça o commit:
-   fix: corrige tipagens do build frontend
+Quando os checks ficarem verdes, faça o merge.
 
-7. Push origin.
+Só então crie o Blueprint no Render usando o render.yaml.
 
-8. O Pull Request atual será atualizado e o GitHub Actions rodará novamente.
+Leia:
+docs/DEPLOY_RENDER.md
 
-Resultado esperado do build:
-vite build concluído e pasta dist gerada.
+Essa é a última branch planejada do AutoStock.
