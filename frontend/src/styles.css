@@ -1,0 +1,62 @@
+:root{font-family:Inter,system-ui,Arial,sans-serif;color:#18212f;background:#f5f7fb}*{box-sizing:border-box}body{margin:0}.app{display:grid;grid-template-columns:240px 1fr;min-height:100vh}aside{background:#111827;color:white;padding:24px;display:flex;flex-direction:column;gap:22px}aside h1{margin:0}nav{display:flex;flex-direction:column;gap:8px}nav a{color:#cbd5e1;text-decoration:none;padding:10px;border-radius:8px}nav a.active,nav a:hover{background:#1f2937;color:white}main{padding:28px;overflow:auto}h2{margin-top:0}.cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}.card{background:white;border-radius:14px;padding:20px;box-shadow:0 1px 4px #0001}.card b{display:block;font-size:28px}.card span{color:#64748b}section{background:white;padding:20px;border-radius:14px;margin-top:18px;box-shadow:0 1px 4px #0001}table{width:100%;border-collapse:collapse;background:white;margin-top:18px}th,td{padding:12px;border-bottom:1px solid #e5e7eb;text-align:left}th{background:#f8fafc}.gridform{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;background:white;padding:16px;border-radius:12px}.gridform input,.gridform select,.login input{padding:11px;border:1px solid #cbd5e1;border-radius:8px}button{padding:11px 16px;border:0;border-radius:8px;background:#2563eb;color:white;font-weight:600;cursor:pointer}.secondary{background:#374151}.login{min-height:100vh;display:grid;place-items:center}.login form{width:min(380px,92vw);background:white;padding:28px;border-radius:16px;display:grid;gap:12px;box-shadow:0 8px 30px #0002}.error{color:#b91c1c}.badge{padding:4px 8px;border-radius:999px;background:#e5e7eb;font-size:12px}.badge.CRITICO{background:#fee2e2}.badge.ATENCAO{background:#fef3c7}.badge.OK{background:#dcfce7}@media(max-width:900px){.app{grid-template-columns:1fr}aside{position:static}nav{flex-direction:row;flex-wrap:wrap}.cards{grid-template-columns:repeat(2,1fr)}}
+
+.saleform{background:white;padding:16px;border-radius:12px;display:grid;gap:10px}.saleitem{display:grid;grid-template-columns:1fr 110px;gap:10px}.saleitem select,.saleitem input,.inlineform input{padding:11px;border:1px solid #cbd5e1;border-radius:8px}.twocol{display:grid;grid-template-columns:1fr 1fr;gap:18px}.inlineform{display:flex;gap:8px}.inlineform input{flex:1}@media(max-width:700px){.twocol{grid-template-columns:1fr}.saleitem{grid-template-columns:1fr}}
+
+/* Cadastro de produtos */
+.page-header{display:flex;align-items:center;justify-content:space-between;gap:16px}.page-header h2{margin-bottom:4px}.muted{margin:0;color:#64748b}.toolbar{display:flex;align-items:center;gap:12px;justify-content:space-between;margin-top:18px;background:white;padding:12px 16px;border-radius:12px}.toolbar input{width:min(520px,100%);padding:11px;border:1px solid #cbd5e1;border-radius:8px}.table-wrap{overflow-x:auto}.form-actions{display:flex;gap:8px;align-items:center}.check-field{display:flex;gap:8px;align-items:center;padding:8px}.row-actions{display:flex;gap:6px}.small{padding:7px 10px;font-size:12px}.danger{background:#b91c1c}.stock-low{font-weight:700;color:#b91c1c}
+
+/* Cadastro de fornecedores */
+.field-stack{display:grid;gap:6px;color:#475569;font-size:13px}.field-stack input{font-size:14px}
+
+/* Cadastro de categorias */
+.category-form{display:flex;gap:10px;align-items:center;background:white;padding:16px;border-radius:12px;margin-top:18px}.category-form input{flex:1;min-width:220px;padding:11px;border:1px solid #cbd5e1;border-radius:8px}@media(max-width:650px){.category-form{align-items:stretch;flex-direction:column}.category-form .form-actions{flex-wrap:wrap}}
+
+/* Dashboard */
+.dashboard-cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin-top:18px}
+.dashboard-cards .card{display:grid;gap:7px}
+.dashboard-cards .card strong{font-size:24px}
+.dashboard-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.chart-box{height:330px;margin-top:10px}
+@media(max-width:1100px){.dashboard-cards{grid-template-columns:repeat(2,minmax(0,1fr))}.dashboard-grid{grid-template-columns:1fr}}
+@media(max-width:600px){.dashboard-cards{grid-template-columns:1fr}.page-header{align-items:flex-start;flex-direction:column}}
+
+/* Curva ABC */
+.abc-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin:16px 0}
+.abc-summary .card{display:grid;gap:5px}
+.abc-summary small{color:#64748b}
+.abc-badge{display:inline-flex;align-items:center;justify-content:center;min-width:34px;padding:5px 9px;border-radius:999px;font-weight:700;border:1px solid #d1d5db}
+.abc-A{font-weight:800}
+.abc-B{font-weight:700}
+.abc-C{font-weight:600}
+@media(max-width:900px){.abc-summary{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){.abc-summary{grid-template-columns:1fr}}
+
+/* Sugestão de reposição */
+.replenishment-controls{display:flex;flex-wrap:wrap;gap:14px;margin:14px 0}
+.replenishment-controls label{display:grid;gap:6px;font-size:14px;font-weight:600}
+.replenishment-controls select{min-width:190px}
+
+/* QR Code de produtos */
+.qr-page{display:grid;grid-template-columns:minmax(300px,380px) 1fr;gap:22px;align-items:start;margin-top:18px}
+.qr-label{background:white;border:1px solid #d1d5db;border-radius:14px;padding:24px;display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;box-shadow:0 1px 4px #0001}
+.qr-brand{font-size:22px;font-weight:800}
+.qr-product-name{font-size:18px}
+.qr-sku{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:15px}
+.qr-meta{display:grid;grid-template-columns:1fr 1fr;gap:12px;width:100%;margin-top:6px;padding-top:12px;border-top:1px solid #e5e7eb}
+.qr-details{margin-top:0}
+.product-detail-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:0}
+.product-detail-list div{background:#f8fafc;border-radius:10px;padding:12px}
+.product-detail-list dt{font-size:12px;color:#64748b;margin-bottom:4px}
+.product-detail-list dd{margin:0;font-weight:600}
+.qr-url{margin-top:16px;word-break:break-all}
+.link-button{display:inline-flex;align-items:center;text-decoration:none;padding:11px 16px;border-radius:8px;color:white;font-weight:600}
+@media(max-width:850px){.qr-page{grid-template-columns:1fr}.product-detail-list{grid-template-columns:1fr}}
+@media print{
+  body{background:white}
+  .app{display:block;min-height:auto}
+  aside,.no-print{display:none!important}
+  main{padding:0;overflow:visible}
+  .qr-page{display:block;margin:0}
+  .qr-label{width:90mm;min-height:110mm;margin:0 auto;box-shadow:none;border:1px solid #000}
+}
+

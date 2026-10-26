@@ -1,0 +1,945 @@
+from decimal import Decimal
+from django.contrib.auth.models import User
+from rest_framework.test import APITestCase
+from rest_framework import status
+from .models import Product, StockMovement, Sale, SaleItem
+
+
+class ProductCrudTests(APITestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='teste', password='teste123')
+        self.client.force_authenticate(self.user)
+
+    def test_create_product(self):
+        response = self.client.post(
+            '/api/products/',
+            {
+                'sku': 'abc-001',
+                'name': 'Pastilha de Freio',
+                'cost_price': '80.00',
+                'sale_price': '129.90',
+                'min_stock': 5,
+                'location': 'A-01',
+                'active': True,
+            },
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(Product.objects.count(), 1)
+        self.assertEqual(Product.objects.first().sku, 'ABC-001')
+
+    def test_list_products(self):
+        Product.objects.create(sku='P001', name='Filtro de Óleo', sale_price=30)
+        response = self.client.get('/api/products/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+
+    def test_update_product(self):
+        product = Product.objects.create(sku='P001', name='Filtro', sale_price=30)
+        response = self.client.patch(
+            f'/api/products/{product.id}/',
+            {'name': 'Filtro de Óleo', 'sale_price': '35.00'},
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        product.refresh_from_db()
+        self.assertEqual(product.name, 'Filtro de Óleo')
+
+    def test_delete_product(self):
+        product = Product.objects.create(sku='P001', name='Filtro')
+        response = self.client.delete(f'/api/products/{product.id}/')
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(Product.objects.filter(id=product.id).exists())
+
+    def test_search_product(self):
+        Product.objects.create(sku='P001', name='Pastilha de Freio')
+        Product.objects.create(sku='P002', name='Filtro de Óleo')
+        response = self.client.get('/api/products/?search=Pastilha')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]['sku'], 'P001')
+
+
+class StockMovementTests(APITestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='estoque_teste', password='teste123')
+        self.client.force_authenticate(self.user)
+        self.product = Product.objects.create(
+            sku='P001',
+            name='Produto Teste',
+            quantity=10,
+            min_stock=2,
+        )
+
+    def test_stock_increases_on_entry(self):
+        response = self.client.post(
+            '/api/movements/',
+            {
+                'product': self.product.id,
+                'movement_type': 'IN',
+                'quantity': 5,
+                'unit_cost': '20.50',
+                'note': 'Compra do fornecedor',
+            },
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.product.refresh_from_db()
+        self.assertEqual(self.product.quantity, 15)
+
+    def test_stock_decreases_on_exit(self):
+        response = self.client.post(
+            '/api/movements/',
+            {'product': self.product.id, 'movement_type': 'OUT', 'quantity': 4},
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.product.refresh_from_db()
+        self.assertEqual(self.product.quantity, 6)
+
+    def test_reject_exit_when_stock_is_insufficient(self):
+        response = self.client.post(
+            '/api/movements/',
+            {'product': self.product.id, 'movement_type': 'OUT', 'quantity': 11},
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.product.refresh_from_db()
+        self.assertEqual(self.product.quantity, 10)
+
+    def test_adjustment_sets_exact_stock(self):
+        response = self.client.post(
+            '/api/movements/',
+            {'product': self.product.id, 'movement_type': 'ADJ', 'quantity': 7},
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.product.refresh_from_db()
+        self.assertEqual(self.product.quantity, 7)
+
+    def test_movement_records_authenticated_user(self):
+        response = self.client.post(
+            '/api/movements/',
+            {'product': self.product.id, 'movement_type': 'IN', 'quantity': 1},
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        movement = StockMovement.objects.latest('id')
+        self.assertEqual(movement.created_by, self.user)
+
+    def test_filter_movements_by_type(self):
+        StockMovement.objects.create(
+            product=self.product,
+            movement_type=StockMovement.IN,
+            quantity=2,
+            created_by=self.user,
+        )
+        StockMovement.objects.create(
+            product=self.product,
+            movement_type=StockMovement.OUT,
+            quantity=1,
+            created_by=self.user,
+        )
+        response = self.client.get('/api/movements/?type=IN')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]['movement_type'], 'IN')
+
+
+class SupplierCrudTests(APITestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='fornecedor_teste', password='teste123')
+        self.client.force_authenticate(self.user)
+
+    def test_create_supplier(self):
+        response = self.client.post(
+            '/api/suppliers/',
+            {
+                'name': 'Distribuidora Teste',
+                'cnpj': '12345678000199',
+                'phone': '(15) 99999-9999',
+                'email': 'contato@teste.com.br',
+                'lead_time_days': 5,
+            },
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data['name'], 'Distribuidora Teste')
+        self.assertEqual(response.data['lead_time_days'], 5)
+
+    def test_reject_invalid_cnpj(self):
+        response = self.client.post(
+            '/api/suppliers/',
+            {'name': 'Fornecedor Inválido', 'cnpj': '123', 'lead_time_days': 7},
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('cnpj', response.data)
+
+    def test_update_supplier(self):
+        from .models import Supplier
+        supplier = Supplier.objects.create(name='Fornecedor A', lead_time_days=7)
+        response = self.client.patch(
+            f'/api/suppliers/{supplier.id}/',
+            {'lead_time_days': 3, 'phone': '15999999999'},
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        supplier.refresh_from_db()
+        self.assertEqual(supplier.lead_time_days, 3)
+
+    def test_search_supplier(self):
+        from .models import Supplier
+        Supplier.objects.create(name='Auto Distribuidora Sul', cnpj='12345678000199')
+        Supplier.objects.create(name='Peças Norte', cnpj='98765432000188')
+        response = self.client.get('/api/suppliers/?search=Sul')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]['name'], 'Auto Distribuidora Sul')
+
+
+class CategoryCrudTests(APITestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='categoria_teste', password='teste123')
+        self.client.force_authenticate(self.user)
+
+    def test_create_category(self):
+        response = self.client.post('/api/categories/', {'name': 'Freios'}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data['name'], 'Freios')
+
+    def test_reject_duplicate_category_ignoring_case(self):
+        from .models import Category
+        Category.objects.create(name='Filtros')
+        response = self.client.post('/api/categories/', {'name': 'filtros'}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_update_category(self):
+        from .models import Category
+        category = Category.objects.create(name='Suspensão')
+        response = self.client.patch(
+            f'/api/categories/{category.id}/',
+            {'name': 'Suspensão e Direção'},
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        category.refresh_from_db()
+        self.assertEqual(category.name, 'Suspensão e Direção')
+
+    def test_delete_category(self):
+        from .models import Category
+        category = Category.objects.create(name='Elétrica')
+        response = self.client.delete(f'/api/categories/{category.id}/')
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(Category.objects.filter(id=category.id).exists())
+
+    def test_search_category(self):
+        from .models import Category
+        Category.objects.create(name='Freios')
+        Category.objects.create(name='Filtros')
+        response = self.client.get('/api/categories/?search=Freio')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]['name'], 'Freios')
+
+class BrandCrudTests(APITestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='marca_teste', password='teste123')
+        self.client.force_authenticate(self.user)
+
+    def test_create_brand(self):
+        response = self.client.post('/api/brands/', {'name': 'Bosch'}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data['name'], 'Bosch')
+
+    def test_reject_duplicate_brand_ignoring_case(self):
+        from .models import Brand
+        Brand.objects.create(name='Cobreq')
+        response = self.client.post('/api/brands/', {'name': 'cobreq'}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_update_brand(self):
+        from .models import Brand
+        brand = Brand.objects.create(name='Mann')
+        response = self.client.patch(
+            f'/api/brands/{brand.id}/',
+            {'name': 'MANN-FILTER'},
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        brand.refresh_from_db()
+        self.assertEqual(brand.name, 'MANN-FILTER')
+
+    def test_delete_brand(self):
+        from .models import Brand
+        brand = Brand.objects.create(name='Gates')
+        response = self.client.delete(f'/api/brands/{brand.id}/')
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(Brand.objects.filter(id=brand.id).exists())
+
+    def test_search_brand(self):
+        from .models import Brand
+        Brand.objects.create(name='Bosch')
+        Brand.objects.create(name='Fremax')
+        response = self.client.get('/api/brands/?search=Bos')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]['name'], 'Bosch')
+
+class SaleTests(APITestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='vendas_teste', password='teste123')
+        self.client.force_authenticate(self.user)
+        self.product_a = Product.objects.create(
+            sku='PA001',
+            name='Pastilha de Freio',
+            quantity=10,
+            min_stock=2,
+            sale_price='100.00',
+        )
+        self.product_b = Product.objects.create(
+            sku='OL001',
+            name='Óleo 5W30',
+            quantity=20,
+            min_stock=5,
+            sale_price='40.00',
+        )
+
+    def test_create_sale_with_multiple_items_and_reduce_stock(self):
+        response = self.client.post(
+            '/api/sales/',
+            {
+                'customer_name': 'Cliente Teste',
+                'items': [
+                    {'product': self.product_a.id, 'quantity': 2},
+                    {'product': self.product_b.id, 'quantity': 3},
+                ],
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(str(response.data['total']), '320.00')
+
+        self.product_a.refresh_from_db()
+        self.product_b.refresh_from_db()
+        self.assertEqual(self.product_a.quantity, 8)
+        self.assertEqual(self.product_b.quantity, 17)
+
+        sale = Sale.objects.get(pk=response.data['id'])
+        self.assertEqual(sale.items.count(), 2)
+        self.assertEqual(
+            StockMovement.objects.filter(note=f'Venda #{sale.id}').count(),
+            2,
+        )
+
+    def test_sale_accepts_custom_unit_price(self):
+        response = self.client.post(
+            '/api/sales/',
+            {
+                'items': [
+                    {
+                        'product': self.product_a.id,
+                        'quantity': 2,
+                        'unit_price': '90.00',
+                    }
+                ],
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(str(response.data['total']), '180.00')
+
+    def test_sale_fails_when_stock_is_insufficient_and_does_not_create_partial_sale(self):
+        response = self.client.post(
+            '/api/sales/',
+            {
+                'items': [
+                    {'product': self.product_a.id, 'quantity': 2},
+                    {'product': self.product_b.id, 'quantity': 50},
+                ],
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(Sale.objects.count(), 0)
+        self.assertEqual(SaleItem.objects.count(), 0)
+
+        self.product_a.refresh_from_db()
+        self.product_b.refresh_from_db()
+        self.assertEqual(self.product_a.quantity, 10)
+        self.assertEqual(self.product_b.quantity, 20)
+
+    def test_sale_rejects_duplicate_product_items(self):
+        response = self.client.post(
+            '/api/sales/',
+            {
+                'items': [
+                    {'product': self.product_a.id, 'quantity': 1},
+                    {'product': self.product_a.id, 'quantity': 2},
+                ],
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(Sale.objects.count(), 0)
+
+    def test_sale_requires_at_least_one_item(self):
+        response = self.client.post(
+            '/api/sales/',
+            {'customer_name': 'Cliente', 'items': []},
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+class MinimumStockTests(APITestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='estoque_minimo_teste', password='teste123')
+        self.client.force_authenticate(self.user)
+
+        self.low = Product.objects.create(
+            sku='LOW001',
+            name='Produto Baixo',
+            quantity=3,
+            min_stock=5,
+            sale_price='10.00',
+        )
+        self.zero = Product.objects.create(
+            sku='ZERO001',
+            name='Produto Zerado',
+            quantity=0,
+            min_stock=2,
+            sale_price='20.00',
+        )
+        self.ok = Product.objects.create(
+            sku='OK001',
+            name='Produto OK',
+            quantity=10,
+            min_stock=4,
+            sale_price='30.00',
+        )
+
+    def test_filter_low_stock_products(self):
+        response = self.client.get('/api/products/?low_stock=true')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        skus = {item['sku'] for item in response.data}
+        self.assertIn('LOW001', skus)
+        self.assertIn('ZERO001', skus)
+        self.assertNotIn('OK001', skus)
+
+    def test_stock_status_for_low_product(self):
+        response = self.client.get(f'/api/products/{self.low.id}/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['stock_status'], 'ESTOQUE_BAIXO')
+        self.assertEqual(response.data['stock_difference'], 2)
+
+    def test_stock_status_for_zero_product(self):
+        response = self.client.get(f'/api/products/{self.zero.id}/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['stock_status'], 'SEM_ESTOQUE')
+
+    def test_stock_status_for_normal_product(self):
+        response = self.client.get(f'/api/products/{self.ok.id}/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['stock_status'], 'OK')
+        self.assertEqual(response.data['stock_difference'], 0)
+
+class DashboardTests(APITestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='dashboard_teste', password='teste123')
+        self.client.force_authenticate(self.user)
+
+        self.low_product = Product.objects.create(
+            sku='DB001',
+            name='Pastilha',
+            quantity=2,
+            min_stock=5,
+            cost_price='50.00',
+            sale_price='100.00',
+        )
+        self.ok_product = Product.objects.create(
+            sku='DB002',
+            name='Filtro',
+            quantity=10,
+            min_stock=3,
+            cost_price='20.00',
+            sale_price='40.00',
+        )
+
+        self.sale = Sale.objects.create(
+            customer_name='Cliente Dashboard',
+            total='200.00',
+            created_by=self.user,
+        )
+        SaleItem.objects.create(
+            sale=self.sale,
+            product=self.low_product,
+            quantity=2,
+            unit_price='100.00',
+        )
+
+    def test_dashboard_returns_main_indicators(self):
+        response = self.client.get('/api/dashboard/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        self.assertEqual(response.data['products'], 2)
+        self.assertEqual(response.data['low_stock'], 1)
+        self.assertEqual(response.data['out_of_stock'], 0)
+        self.assertEqual(response.data['inventory_units'], 12)
+        self.assertEqual(response.data['sales_count_30d'], 1)
+        self.assertEqual(Decimal(str(response.data['sales_30d'])), Decimal('200.00'))
+        self.assertEqual(Decimal(str(response.data['avg_ticket_30d'])), Decimal('200.00'))
+
+    def test_dashboard_lists_top_selling_product(self):
+        response = self.client.get('/api/dashboard/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data['top_products']), 1)
+        self.assertEqual(response.data['top_products'][0]['product__sku'], 'DB001')
+
+    def test_dashboard_lists_low_stock_products(self):
+        response = self.client.get('/api/dashboard/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        skus = {item['sku'] for item in response.data['low_stock_products']}
+        self.assertIn('DB001', skus)
+        self.assertNotIn('DB002', skus)
+
+class ABCAnalysisTests(APITestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='abc_teste', password='teste123')
+        self.client.force_authenticate(self.user)
+
+        self.products = [
+            Product.objects.create(
+                sku='ABC001',
+                name='Produto A1',
+                quantity=10,
+                min_stock=1,
+                sale_price='70.00',
+            ),
+            Product.objects.create(
+                sku='ABC002',
+                name='Produto A2',
+                quantity=10,
+                min_stock=1,
+                sale_price='15.00',
+            ),
+            Product.objects.create(
+                sku='ABC003',
+                name='Produto B',
+                quantity=10,
+                min_stock=1,
+                sale_price='10.00',
+            ),
+            Product.objects.create(
+                sku='ABC004',
+                name='Produto C',
+                quantity=10,
+                min_stock=1,
+                sale_price='5.00',
+            ),
+        ]
+
+        sale = Sale.objects.create(
+            customer_name='Cliente ABC',
+            total='100.00',
+            created_by=self.user,
+        )
+
+        values = ['70.00', '15.00', '10.00', '5.00']
+        for product, value in zip(self.products, values):
+            SaleItem.objects.create(
+                sale=sale,
+                product=product,
+                quantity=1,
+                unit_price=value,
+            )
+
+    def test_abc_returns_products_ordered_by_revenue(self):
+        response = self.client.get('/api/analytics/abc/?days=90')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 4)
+        self.assertEqual(response.data[0]['product__sku'], 'ABC001')
+        self.assertEqual(response.data[-1]['product__sku'], 'ABC004')
+
+    def test_abc_calculates_share_and_cumulative_percentage(self):
+        response = self.client.get('/api/analytics/abc/?days=90')
+        first = response.data[0]
+        second = response.data[1]
+
+        self.assertEqual(first['share_pct'], 70.0)
+        self.assertEqual(first['cumulative_pct'], 70.0)
+        self.assertEqual(second['cumulative_pct'], 85.0)
+
+    def test_abc_assigns_classes(self):
+        response = self.client.get('/api/analytics/abc/?days=90')
+        classes = {item['product__sku']: item['class'] for item in response.data}
+
+        self.assertEqual(classes['ABC001'], 'A')
+        self.assertEqual(classes['ABC002'], 'A')
+        self.assertEqual(classes['ABC003'], 'B')
+        self.assertEqual(classes['ABC004'], 'C')
+
+    def test_abc_accepts_period_parameter(self):
+        response = self.client.get('/api/analytics/abc/?days=30')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+class SlowProductsTests(APITestCase):
+    def setUp(self):
+        from datetime import timedelta
+        from django.utils import timezone
+
+        self.user = User.objects.create_user(username='parados_teste', password='teste123')
+        self.client.force_authenticate(self.user)
+
+        self.old_unsold = Product.objects.create(
+            sku='PAR001',
+            name='Produto Parado',
+            quantity=8,
+            min_stock=1,
+            cost_price='25.00',
+            sale_price='50.00',
+        )
+        Product.objects.filter(pk=self.old_unsold.pk).update(
+            created_at=timezone.now() - timedelta(days=150)
+        )
+        self.old_unsold.refresh_from_db()
+
+        self.recently_sold = Product.objects.create(
+            sku='PAR002',
+            name='Produto Vendido Recentemente',
+            quantity=5,
+            min_stock=1,
+            cost_price='30.00',
+            sale_price='60.00',
+        )
+
+        recent_sale = Sale.objects.create(
+            customer_name='Cliente recente',
+            total='60.00',
+            created_by=self.user,
+        )
+        SaleItem.objects.create(
+            sale=recent_sale,
+            product=self.recently_sold,
+            quantity=1,
+            unit_price='60.00',
+        )
+
+        self.old_sold = Product.objects.create(
+            sku='PAR003',
+            name='Produto Sem Venda Há Muito Tempo',
+            quantity=4,
+            min_stock=1,
+            cost_price='10.00',
+            sale_price='20.00',
+        )
+
+        old_sale = Sale.objects.create(
+            customer_name='Cliente antigo',
+            total='20.00',
+            created_by=self.user,
+        )
+        Sale.objects.filter(pk=old_sale.pk).update(
+            created_at=timezone.now() - timedelta(days=130)
+        )
+        old_sale.refresh_from_db()
+        SaleItem.objects.create(
+            sale=old_sale,
+            product=self.old_sold,
+            quantity=1,
+            unit_price='20.00',
+        )
+
+        self.new_unsold = Product.objects.create(
+            sku='PAR004',
+            name='Produto Novo Sem Venda',
+            quantity=6,
+            min_stock=1,
+            cost_price='15.00',
+            sale_price='30.00',
+        )
+
+        self.zero_stock = Product.objects.create(
+            sku='PAR005',
+            name='Produto Zerado',
+            quantity=0,
+            min_stock=1,
+            cost_price='100.00',
+            sale_price='150.00',
+        )
+        Product.objects.filter(pk=self.zero_stock.pk).update(
+            created_at=timezone.now() - timedelta(days=200)
+        )
+
+    def test_slow_products_returns_items_without_sales_in_period(self):
+        response = self.client.get('/api/analytics/slow-products/?days=90')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        skus = {item['sku'] for item in response.data['items']}
+
+        self.assertIn('PAR001', skus)
+        self.assertIn('PAR003', skus)
+        self.assertNotIn('PAR002', skus)
+        self.assertNotIn('PAR004', skus)
+        self.assertNotIn('PAR005', skus)
+
+    def test_slow_products_calculates_inventory_value(self):
+        response = self.client.get('/api/analytics/slow-products/?days=90')
+        items = {item['sku']: item for item in response.data['items']}
+
+        self.assertEqual(str(items['PAR001']['inventory_value']), '200.00')
+        self.assertEqual(str(items['PAR003']['inventory_value']), '40.00')
+        self.assertEqual(str(response.data['inventory_value']), '240.00')
+
+    def test_never_sold_product_is_flagged(self):
+        response = self.client.get('/api/analytics/slow-products/?days=90')
+        items = {item['sku']: item for item in response.data['items']}
+
+        self.assertTrue(items['PAR001']['never_sold'])
+        self.assertFalse(items['PAR003']['never_sold'])
+
+    def test_period_can_be_changed(self):
+        response = self.client.get('/api/analytics/slow-products/?days=180')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        skus = {item['sku'] for item in response.data['items']}
+
+        self.assertNotIn('PAR001', skus)
+        self.assertNotIn('PAR003', skus)
+
+class RuptureForecastTests(APITestCase):
+    def setUp(self):
+        from .models import Supplier
+
+        self.user = User.objects.create_user(username='ruptura_teste', password='teste123')
+        self.client.force_authenticate(self.user)
+
+        supplier = Supplier.objects.create(
+            name='Fornecedor Teste',
+            lead_time_days=7,
+        )
+
+        self.critical = Product.objects.create(
+            sku='RUP001',
+            name='Produto Crítico',
+            supplier=supplier,
+            quantity=10,
+            min_stock=2,
+            sale_price='50.00',
+        )
+
+        self.ok_product = Product.objects.create(
+            sku='RUP002',
+            name='Produto Seguro',
+            supplier=supplier,
+            quantity=30,
+            min_stock=2,
+            sale_price='40.00',
+        )
+
+        self.no_history = Product.objects.create(
+            sku='RUP003',
+            name='Produto Sem Histórico',
+            supplier=supplier,
+            quantity=10,
+            min_stock=2,
+            sale_price='30.00',
+        )
+
+        self.out_of_stock = Product.objects.create(
+            sku='RUP004',
+            name='Produto em Ruptura',
+            supplier=supplier,
+            quantity=0,
+            min_stock=2,
+            sale_price='20.00',
+        )
+
+        sale = Sale.objects.create(
+            customer_name='Cliente Previsão',
+            total='0.00',
+            created_by=self.user,
+        )
+
+        SaleItem.objects.create(
+            sale=sale,
+            product=self.critical,
+            quantity=60,
+            unit_price='50.00',
+        )
+        SaleItem.objects.create(
+            sale=sale,
+            product=self.ok_product,
+            quantity=30,
+            unit_price='40.00',
+        )
+        SaleItem.objects.create(
+            sale=sale,
+            product=self.out_of_stock,
+            quantity=30,
+            unit_price='20.00',
+        )
+
+    def test_forecast_calculates_daily_average_and_coverage(self):
+        response = self.client.get('/api/analytics/rupture-forecast/?days=30')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        items = {item['sku']: item for item in response.data['items']}
+        critical = items['RUP001']
+
+        self.assertEqual(critical['sold_qty'], 60)
+        self.assertEqual(critical['avg_daily'], 2.0)
+        self.assertEqual(critical['coverage_days'], 5.0)
+
+    def test_forecast_marks_critical_when_coverage_is_below_supplier_lead_time(self):
+        response = self.client.get('/api/analytics/rupture-forecast/?days=30')
+        items = {item['sku']: item for item in response.data['items']}
+
+        self.assertEqual(items['RUP001']['risk'], 'CRITICO')
+        self.assertEqual(items['RUP002']['risk'], 'OK')
+
+    def test_forecast_marks_zero_stock_as_rupture(self):
+        response = self.client.get('/api/analytics/rupture-forecast/?days=30')
+        items = {item['sku']: item for item in response.data['items']}
+
+        self.assertEqual(items['RUP004']['risk'], 'RUPTURA')
+        self.assertEqual(items['RUP004']['coverage_days'], 0.0)
+
+    def test_forecast_marks_product_without_sales_history(self):
+        response = self.client.get('/api/analytics/rupture-forecast/?days=30')
+        items = {item['sku']: item for item in response.data['items']}
+
+        self.assertEqual(items['RUP003']['risk'], 'SEM_HISTORICO')
+        self.assertIsNone(items['RUP003']['coverage_days'])
+        self.assertIsNone(items['RUP003']['rupture_date'])
+
+    def test_forecast_returns_summary(self):
+        response = self.client.get('/api/analytics/rupture-forecast/?days=30')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['summary']['RUPTURA'], 1)
+        self.assertEqual(response.data['summary']['CRITICO'], 1)
+        self.assertEqual(response.data['summary']['OK'], 1)
+        self.assertEqual(response.data['summary']['SEM_HISTORICO'], 1)
+
+class ReplenishmentTests(APITestCase):
+    def setUp(self):
+        from .models import Supplier
+
+        self.user = User.objects.create_user(
+            username='reposicao_teste',
+            password='teste123',
+        )
+        self.client.force_authenticate(self.user)
+
+        self.supplier = Supplier.objects.create(
+            name='Fornecedor Reposição',
+            lead_time_days=7,
+        )
+
+        self.to_buy = Product.objects.create(
+            sku='REP001',
+            name='Produto para Repor',
+            supplier=self.supplier,
+            quantity=8,
+            min_stock=3,
+            cost_price='20.00',
+            sale_price='50.00',
+        )
+
+        self.safe = Product.objects.create(
+            sku='REP002',
+            name='Produto com Estoque Seguro',
+            supplier=self.supplier,
+            quantity=100,
+            min_stock=3,
+            cost_price='10.00',
+            sale_price='30.00',
+        )
+
+        self.no_turnover = Product.objects.create(
+            sku='REP003',
+            name='Produto Sem Giro',
+            supplier=self.supplier,
+            quantity=2,
+            min_stock=5,
+            cost_price='15.00',
+            sale_price='25.00',
+        )
+
+        sale = Sale.objects.create(
+            customer_name='Cliente Reposição',
+            total='0.00',
+            created_by=self.user,
+        )
+
+        SaleItem.objects.create(
+            sale=sale,
+            product=self.to_buy,
+            quantity=60,
+            unit_price='50.00',
+        )
+
+        SaleItem.objects.create(
+            sale=sale,
+            product=self.safe,
+            quantity=30,
+            unit_price='30.00',
+        )
+
+    def test_replenishment_calculates_reorder_point(self):
+        response = self.client.get(
+            '/api/analytics/replenishment/?days=30&safety_days=3&target_days=15'
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        items = {item['sku']: item for item in response.data['items']}
+        item = items['REP001']
+
+        self.assertEqual(item['avg_daily'], 2.0)
+        self.assertEqual(item['safety_stock'], 6)
+        self.assertEqual(item['reorder_point'], 20)
+
+    def test_replenishment_suggests_quantity_up_to_target_stock(self):
+        response = self.client.get(
+            '/api/analytics/replenishment/?days=30&safety_days=3&target_days=15'
+        )
+        items = {item['sku']: item for item in response.data['items']}
+        item = items['REP001']
+
+        self.assertEqual(item['target_stock'], 50)
+        self.assertEqual(item['suggested_purchase'], 42)
+        self.assertEqual(str(item['estimated_purchase_cost']), '840.00')
+
+    def test_safe_stock_does_not_generate_purchase(self):
+        response = self.client.get(
+            '/api/analytics/replenishment/?days=30&safety_days=3&target_days=15'
+        )
+        items = {item['sku']: item for item in response.data['items']}
+
+        self.assertEqual(items['REP002']['suggested_purchase'], 0)
+        self.assertEqual(items['REP002']['risk'], 'OK')
+
+    def test_product_without_turnover_is_not_replenished_automatically(self):
+        response = self.client.get(
+            '/api/analytics/replenishment/?days=30&safety_days=3&target_days=15'
+        )
+        items = {item['sku']: item for item in response.data['items']}
+
+        self.assertEqual(items['REP003']['risk'], 'SEM_GIRO')
+        self.assertEqual(items['REP003']['suggested_purchase'], 0)
+
+    def test_replenishment_returns_purchase_summary(self):
+        response = self.client.get(
+            '/api/analytics/replenishment/?days=30&safety_days=3&target_days=15'
+        )
+        summary = response.data['summary']
+
+        self.assertEqual(summary['products_to_buy'], 1)
+        self.assertEqual(summary['total_units'], 42)
+        self.assertEqual(str(summary['estimated_cost']), '840.00')
+

@@ -1,0 +1,59 @@
+DEVOPS: DEPLOY
+
+Última branch do projeto.
+
+Branch:
+devops/deploy
+
+Source:
+develop
+
+O que esta etapa adiciona:
+- render.yaml
+- PostgreSQL no Render
+- deploy do backend Django
+- deploy do frontend React/Vite
+- ligação automática frontend -> backend
+- DATABASE_URL automática
+- DJANGO_SECRET_KEY gerada pelo Render
+- Gunicorn em produção
+- WhiteNoise para arquivos estáticos
+- migrations antes do deploy
+- endpoint /health/
+- rewrite do React Router
+- headers básicos de segurança
+- documentação completa de publicação
+
+COMO APLICAR NO GITHUB DESKTOP:
+1. Vá para develop.
+2. Faça Fetch/Pull.
+3. Crie:
+   devops/deploy
+   Source: develop
+4. Extraia este ZIP.
+5. Copie para a raiz do projeto:
+   - render.yaml
+   - backend/
+   - frontend/
+   - docs/
+6. Mescle/substitua os arquivos existentes.
+7. Faça commit:
+   devops: prepara AutoStock para deploy no Render
+8. Push origin.
+9. Pull Request para develop.
+10. Aguarde o GitHub Actions ficar verde.
+11. Merge e apague a branch.
+
+DEPOIS:
+Faça o Pull Request final:
+
+develop -> main
+
+Quando os checks ficarem verdes, faça o merge.
+
+Só então crie o Blueprint no Render usando o render.yaml.
+
+Leia:
+docs/DEPLOY_RENDER.md
+
+Essa é a última branch planejada do AutoStock.
