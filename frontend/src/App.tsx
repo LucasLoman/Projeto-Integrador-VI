@@ -10,6 +10,7 @@ import Sales from './pages/Sales'
 import Categories from './pages/Categories'
 import Brands from './pages/Brands'
 import LowStock from './pages/LowStock'
+import { DisplayControls } from './preferences'
 
 const menu = [
   {
@@ -41,7 +42,8 @@ const menu = [
 function Layout() {
   const navigate = useNavigate()
   const logout = () => {
-    localStorage.clear()
+    localStorage.removeItem('access')
+    localStorage.removeItem('refresh')
     navigate('/login')
   }
 
@@ -61,6 +63,7 @@ function Layout() {
             </div>
           ))}
         </nav>
+        <DisplayControls />
         <button className="secondary" onClick={logout}>Sair</button>
       </aside>
       <main>

@@ -1,6 +1,7 @@
 import { FormEvent, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import axios from 'axios'
+import { DisplayControls } from '../preferences'
 
 export default function Login() {
   const [username, setUsername] = useState('')
@@ -49,6 +50,7 @@ export default function Login() {
         {error && <span className="error" role="alert">{error}</span>}
         <button>Entrar</button>
       </form>
+      <DisplayControls />
     </div>
   )
 }

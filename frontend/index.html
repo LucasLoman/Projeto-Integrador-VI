@@ -7,6 +7,14 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <title>AutoStock</title>
+    <script>
+      try {
+        var d = document.documentElement, t = localStorage.getItem('theme'), r = localStorage.getItem('fontScale'), i = r === null ? 1 : Number(r);
+        if (t !== 'light' && t !== 'dark') t = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        d.dataset.theme = t;
+        d.style.setProperty('--fs', String([0.9, 1, 1.12, 1.25, 1.4][Number.isInteger(i) && i >= 0 && i < 5 ? i : 1]));
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>
