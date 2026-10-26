@@ -1,0 +1,9 @@
+Correção: backend/entrypoint.sh não encontrado no Docker.
+
+1) Extraia e copie a pasta backend para a raiz do projeto (mesclar).
+2) Na raiz do projeto execute:
+   docker compose down
+   docker compose up -d --build
+   docker compose ps
+
+Não use docker compose down -v, pois apagaria o banco de dados local.
