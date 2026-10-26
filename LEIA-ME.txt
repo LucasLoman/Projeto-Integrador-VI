@@ -1,29 +1,21 @@
-CORREÇÃO DO RENDER (PLANO GRATUITO)
+CORREÇÃO DO BUILD DO AUTOSTOCK NO RENDER
 
-Erro resolvido:
-services[0].pre-deploy command is not supported for free tier services
+Causa: o Render estava usando Python 3.14 por padrão, mas psycopg[binary]==3.2.6 não disponibiliza binários para Python 3.14.
 
-Mudanças:
-- render.yaml: remove preDeployCommand; substitui startCommand por bash ./start.sh
-- backend/start.sh: roda migrations e inicia Gunicorn na porta do Render
-- docs/DEPLOY_RENDER.md: documentação atualizada
+Mudança: no render.yaml, o serviço autostock-api define PYTHON_VERSION=3.12.11.
+A configuração anterior do plano gratuito (start.sh, sem preDeployCommand) é preservada.
 
-COMO APLICAR:
-1. No GitHub Desktop, use a branch que contém render.yaml (main, após deploy já integrado;
-   ou devops/deploy, se ainda estiver aberta).
-2. Extraia este ZIP e copie render.yaml, backend/ e docs/ para a raiz do repositório.
-3. Substitua/mescle os arquivos quando solicitado.
-4. Commit sugerido:
-   fix: adapta deploy do Render ao plano gratuito
-5. Push origin.
-6. Se a correção foi feita em uma branch de trabalho, abra PR para main,
-   aguarde os checks e faça o merge.
-7. No Render, atualize/reabra a página de criação do Blueprint.
-8. Confirme que a mensagem de erro sumiu antes de aplicar.
+COMO APLICAR
+1. Extraia o ZIP.
+2. Copie SOMENTE render.yaml para a raiz do repositório Projeto-Integrador-VI, substituindo o antigo.
+3. No GitHub Desktop, faça commit: fix: define Python 3.12 para deploy no Render
+4. Push para a branch. Confirme que a main recebeu a alteração, via Pull Request se necessário.
+5. No Render, após sincronização do Blueprint, use Manual Deploy > Deploy latest commit, se não iniciar automaticamente.
+6. No log do Render, confira que o Python escolhido é 3.12.x.
 
-IMPORTANTE:
-- Não copie a pasta externa fix_render_free_deploy para dentro do projeto.
-- O .env com senhas não deve ser commitado.
-- No plano gratuito, o Render não disponibiliza Shell; a criação do superusuário
-  de produção precisará de um procedimento separado e seguro.
-- O banco gratuito do Render expira em 30 dias (verifique a política atual).
+ALTERNATIVA SEM ZIP
+No Render > autostock-api > Environment, configure a variável:
+  PYTHON_VERSION=3.12.11
+e realize novo deploy.
+
+NÃO altere psycopg[binary]==3.2.6 neste momento; é compatível com Python 3.12.
