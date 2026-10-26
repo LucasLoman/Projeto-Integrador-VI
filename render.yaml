@@ -13,8 +13,7 @@ services:
     region: virginia
     rootDir: backend
     buildCommand: bash ./build.sh
-    preDeployCommand: python manage.py migrate --noinput
-    startCommand: gunicorn autostock.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --timeout 120
+    startCommand: bash ./start.sh
     healthCheckPath: /health/
     envVars:
       - key: DATABASE_URL

@@ -1,59 +1,29 @@
-DEVOPS: DEPLOY
+CORREÇÃO DO RENDER (PLANO GRATUITO)
 
-Última branch do projeto.
+Erro resolvido:
+services[0].pre-deploy command is not supported for free tier services
 
-Branch:
-devops/deploy
+Mudanças:
+- render.yaml: remove preDeployCommand; substitui startCommand por bash ./start.sh
+- backend/start.sh: roda migrations e inicia Gunicorn na porta do Render
+- docs/DEPLOY_RENDER.md: documentação atualizada
 
-Source:
-develop
+COMO APLICAR:
+1. No GitHub Desktop, use a branch que contém render.yaml (main, após deploy já integrado;
+   ou devops/deploy, se ainda estiver aberta).
+2. Extraia este ZIP e copie render.yaml, backend/ e docs/ para a raiz do repositório.
+3. Substitua/mescle os arquivos quando solicitado.
+4. Commit sugerido:
+   fix: adapta deploy do Render ao plano gratuito
+5. Push origin.
+6. Se a correção foi feita em uma branch de trabalho, abra PR para main,
+   aguarde os checks e faça o merge.
+7. No Render, atualize/reabra a página de criação do Blueprint.
+8. Confirme que a mensagem de erro sumiu antes de aplicar.
 
-O que esta etapa adiciona:
-- render.yaml
-- PostgreSQL no Render
-- deploy do backend Django
-- deploy do frontend React/Vite
-- ligação automática frontend -> backend
-- DATABASE_URL automática
-- DJANGO_SECRET_KEY gerada pelo Render
-- Gunicorn em produção
-- WhiteNoise para arquivos estáticos
-- migrations antes do deploy
-- endpoint /health/
-- rewrite do React Router
-- headers básicos de segurança
-- documentação completa de publicação
-
-COMO APLICAR NO GITHUB DESKTOP:
-1. Vá para develop.
-2. Faça Fetch/Pull.
-3. Crie:
-   devops/deploy
-   Source: develop
-4. Extraia este ZIP.
-5. Copie para a raiz do projeto:
-   - render.yaml
-   - backend/
-   - frontend/
-   - docs/
-6. Mescle/substitua os arquivos existentes.
-7. Faça commit:
-   devops: prepara AutoStock para deploy no Render
-8. Push origin.
-9. Pull Request para develop.
-10. Aguarde o GitHub Actions ficar verde.
-11. Merge e apague a branch.
-
-DEPOIS:
-Faça o Pull Request final:
-
-develop -> main
-
-Quando os checks ficarem verdes, faça o merge.
-
-Só então crie o Blueprint no Render usando o render.yaml.
-
-Leia:
-docs/DEPLOY_RENDER.md
-
-Essa é a última branch planejada do AutoStock.
+IMPORTANTE:
+- Não copie a pasta externa fix_render_free_deploy para dentro do projeto.
+- O .env com senhas não deve ser commitado.
+- No plano gratuito, o Render não disponibiliza Shell; a criação do superusuário
+  de produção precisará de um procedimento separado e seguro.
+- O banco gratuito do Render expira em 30 dias (verifique a política atual).

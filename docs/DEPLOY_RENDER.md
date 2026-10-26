@@ -53,9 +53,13 @@ Portanto, não é necessário copiar a URL manualmente.
 
 O Django usa `dj-database-url` para interpretar a URL.
 
-Antes de iniciar cada nova versão do backend, o Render executa:
+No plano gratuito, `preDeployCommand` não é suportado. A configuração executa
+as migrações no início do backend por meio de `backend/start.sh`:
 
     python manage.py migrate --noinput
+    gunicorn autostock.wsgi:application
+
+A migração é idempotente e será verificada a cada inicialização do serviço.
 
 ## Arquivos estáticos do Django
 
@@ -83,13 +87,11 @@ sem receber erro 404.
 
 Depois que o backend estiver online:
 
-1. Abra o serviço `autostock-api` no Render.
-2. Abra o Shell do serviço.
-3. Execute:
-
-    python manage.py createsuperuser
-
-4. Informe usuário, e-mail e senha.
+O plano gratuito do Render **não inclui Shell**. Para criar o primeiro
+administrador, use um procedimento de provisionamento seguro (por exemplo,
+executar o comando Django localmente apontando para a conexão externa do
+PostgreSQL do Render, com `DATABASE_URL` fornecida por variável de ambiente).
+Não inclua credenciais do banco no GitHub nem no frontend.
 
 Depois acesse:
 
